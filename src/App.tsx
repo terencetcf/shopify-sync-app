@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Navbar from './components/Navbar';
 import Collections from './pages/Collections';
+import Products from './pages/Products';
 import './App.css';
 
 function App() {
@@ -10,7 +11,8 @@ function App() {
     switch (currentPage) {
       case 'collections':
         return <Collections />;
-      // Add other pages here
+      case 'products':
+        return <Products />;
       default:
         return <Collections />;
     }
