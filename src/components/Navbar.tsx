@@ -7,7 +7,6 @@ export default function Navbar() {
   const navigation = [
     { name: 'Collections', href: '/collections', key: 'collections' },
     { name: 'Products', href: '/products', key: 'products' },
-    { name: 'Pages', href: '/pages', key: 'pages' },
     { name: 'Theme', href: '/theme', key: 'theme' },
   ];
 

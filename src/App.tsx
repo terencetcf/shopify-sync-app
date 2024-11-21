@@ -14,7 +14,6 @@ function App() {
             <Route path="/" element={<Navigate to="/collections" replace />} />
             <Route path="/collections" element={<Collections />} />
             <Route path="/products" element={<Products />} />
-            <Route path="/pages" element={<div>Pages Coming Soon</div>} />
             <Route path="/theme" element={<div>Theme Coming Soon</div>} />
             <Route path="/settings" element={<div>Settings Coming Soon</div>} />
           </Routes>
