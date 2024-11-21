@@ -9,13 +9,20 @@ interface Collection {
   updatedAt: string;
 }
 
+interface CollectionsConnection {
+  edges: {
+    node: Collection;
+    cursor: string;
+  }[];
+  pageInfo: {
+    hasNextPage: boolean;
+    endCursor: string;
+  };
+}
+
 interface CollectionResponse {
   data: {
-    collections: {
-      edges: {
-        node: Collection;
-      }[];
-    };
+    collections: CollectionsConnection;
   };
 }
 
@@ -23,14 +30,18 @@ interface CollectionsStore {
   collections: Collection[];
   isLoading: boolean;
   error: string | null;
-  fetchCollections: () => Promise<void>;
+  hasNextPage: boolean;
+  endCursor: string | null;
+  fetchCollections: (cursor?: string | null) => Promise<void>;
 }
 
 export const useCollectionsStore = create<CollectionsStore>((set) => ({
   collections: [],
   isLoading: false,
   error: null,
-  fetchCollections: async () => {
+  hasNextPage: false,
+  endCursor: null,
+  fetchCollections: async (cursor?: string | null) => {
     set({ isLoading: true, error: null });
 
     try {
@@ -43,8 +54,8 @@ export const useCollectionsStore = create<CollectionsStore>((set) => ({
         },
         data: {
           query: `
-            query {
-              collections(first: 100) {
+            query getCollections($cursor: String) {
+              collections(first: 25, after: $cursor) {
                 edges {
                   node {
                     id
@@ -53,10 +64,18 @@ export const useCollectionsStore = create<CollectionsStore>((set) => ({
                     productsCount
                     updatedAt
                   }
+                  cursor
+                }
+                pageInfo {
+                  hasNextPage
+                  endCursor
                 }
               }
             }
           `,
+          variables: {
+            cursor: cursor,
+          },
         },
       });
 
@@ -64,7 +83,14 @@ export const useCollectionsStore = create<CollectionsStore>((set) => ({
         (edge: { node: Collection }) => edge.node
       );
 
-      set({ collections: collectionsData, isLoading: false });
+      set((state) => ({
+        collections: cursor
+          ? [...state.collections, ...collectionsData]
+          : collectionsData,
+        hasNextPage: data.data.collections.pageInfo.hasNextPage,
+        endCursor: data.data.collections.pageInfo.endCursor,
+        isLoading: false,
+      }));
     } catch (err: any) {
       const errorMessage =
         err.response?.data?.errors?.[0]?.message ||

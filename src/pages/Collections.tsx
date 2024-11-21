@@ -3,8 +3,14 @@ import { useCollectionsStore } from '../stores/useCollectionsStore';
 import ProductsModal from '../components/ProductsModal';
 
 export default function Collections() {
-  const { collections, isLoading, error, fetchCollections } =
-    useCollectionsStore();
+  const {
+    collections,
+    isLoading,
+    error,
+    fetchCollections,
+    hasNextPage,
+    endCursor,
+  } = useCollectionsStore();
   const [selectedCollection, setSelectedCollection] = useState<{
     id: string;
     title: string;
@@ -14,8 +20,13 @@ export default function Collections() {
     fetchCollections();
   }, [fetchCollections]);
 
+  const loadMore = () => {
+    if (hasNextPage && !isLoading) {
+      fetchCollections(endCursor);
+    }
+  };
+
   const exportToCSV = () => {
-    // Convert collections to CSV format
     const headers = ['Title', 'Handle', 'Products Count', 'Last Updated'];
     const csvData = collections.map((collection) => [
       collection.title,
@@ -24,13 +35,9 @@ export default function Collections() {
       new Date(collection.updatedAt).toLocaleDateString(),
     ]);
 
-    // Add headers to the beginning
     csvData.unshift(headers);
-
-    // Convert to CSV string
     const csvString = csvData.map((row) => row.join(',')).join('\n');
 
-    // Create blob and download
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     if (link.download !== undefined) {
@@ -46,14 +53,6 @@ export default function Collections() {
       document.body.removeChild(link);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
 
   if (error) {
     return <div className="text-red-500 p-4 text-center">{error}</div>;
@@ -163,6 +162,44 @@ export default function Collections() {
           </div>
         </div>
       </div>
+
+      {hasNextPage && (
+        <div className="mt-4 flex justify-center">
+          <button
+            onClick={loadMore}
+            disabled={isLoading}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <>
+                <svg
+                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Loading...
+              </>
+            ) : (
+              'Load More'
+            )}
+          </button>
+        </div>
+      )}
 
       <div className="mt-4 flex justify-end">
         <div className="inline-flex items-center px-3 py-2 rounded-md bg-gray-800 text-sm text-gray-300">
