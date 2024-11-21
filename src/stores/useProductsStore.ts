@@ -12,13 +12,20 @@ interface Product {
   productType: string;
 }
 
+interface ProductsConnection {
+  edges: {
+    node: Product;
+    cursor: string;
+  }[];
+  pageInfo: {
+    hasNextPage: boolean;
+    endCursor: string;
+  };
+}
+
 interface ProductResponse {
   data: {
-    products: {
-      edges: {
-        node: Product;
-      }[];
-    };
+    products: ProductsConnection;
   };
 }
 
@@ -26,14 +33,18 @@ interface ProductsStore {
   products: Product[];
   isLoading: boolean;
   error: string | null;
-  fetchProducts: () => Promise<void>;
+  hasNextPage: boolean;
+  endCursor: string | null;
+  fetchProducts: (cursor?: string | null) => Promise<void>;
 }
 
-export const useProductsStore = create<ProductsStore>((set) => ({
+export const useProductsStore = create<ProductsStore>((set, get) => ({
   products: [],
   isLoading: false,
   error: null,
-  fetchProducts: async () => {
+  hasNextPage: false,
+  endCursor: null,
+  fetchProducts: async (cursor?: string | null) => {
     set({ isLoading: true, error: null });
 
     try {
@@ -46,8 +57,8 @@ export const useProductsStore = create<ProductsStore>((set) => ({
         },
         data: {
           query: `
-            query {
-              products(first: 100) {
+            query getProducts($cursor: String) {
+              products(first: 25, after: $cursor) {
                 edges {
                   node {
                     id
@@ -59,10 +70,18 @@ export const useProductsStore = create<ProductsStore>((set) => ({
                     vendor
                     productType
                   }
+                  cursor
+                }
+                pageInfo {
+                  hasNextPage
+                  endCursor
                 }
               }
             }
           `,
+          variables: {
+            cursor: cursor,
+          },
         },
       });
 
@@ -70,7 +89,12 @@ export const useProductsStore = create<ProductsStore>((set) => ({
         (edge: { node: Product }) => edge.node
       );
 
-      set({ products: productsData, isLoading: false });
+      set((state) => ({
+        products: cursor ? [...state.products, ...productsData] : productsData,
+        hasNextPage: data.data.products.pageInfo.hasNextPage,
+        endCursor: data.data.products.pageInfo.endCursor,
+        isLoading: false,
+      }));
     } catch (err: any) {
       const errorMessage =
         err.response?.data?.errors?.[0]?.message || 'Failed to fetch products';

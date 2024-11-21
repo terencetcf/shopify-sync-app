@@ -1,11 +1,9 @@
-import { Dispatch, SetStateAction } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
-interface NavbarProps {
-  currentPage: string;
-  setCurrentPage: Dispatch<SetStateAction<string>>;
-}
+export default function Navbar() {
+  const location = useLocation();
+  const currentPath = location.pathname;
 
-export default function Navbar({ currentPage, setCurrentPage }: NavbarProps) {
   const navigation = [
     { name: 'Collections', href: '/collections', key: 'collections' },
     { name: 'Products', href: '/products', key: 'products' },
@@ -19,38 +17,30 @@ export default function Navbar({ currentPage, setCurrentPage }: NavbarProps) {
         <div className="flex h-16 justify-between">
           <div className="flex">
             <div className="flex flex-shrink-0 items-center">
-              <span className="text-xl font-semibold text-white">
+              <Link to="/" className="text-xl font-semibold text-white">
                 Shopify Sync
-              </span>
+              </Link>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               {navigation.map((item) => (
-                <a
+                <Link
                   key={item.key}
-                  href={item.href}
+                  to={item.href}
                   className={`inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium ${
-                    currentPage === item.key
+                    currentPath === item.href
                       ? 'border-blue-500 text-white'
                       : 'border-transparent text-gray-300 hover:border-gray-300 hover:text-gray-100'
                   }`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setCurrentPage(item.key);
-                  }}
                 >
                   {item.name}
-                </a>
+                </Link>
               ))}
             </div>
           </div>
           <div className="flex items-center">
-            <a
-              href="/settings"
+            <Link
+              to="/settings"
               className="rounded-full p-2 text-gray-300 hover:bg-gray-700 hover:text-white"
-              onClick={(e) => {
-                e.preventDefault();
-                setCurrentPage('settings');
-              }}
             >
               <svg
                 className="h-6 w-6"
@@ -70,7 +60,7 @@ export default function Navbar({ currentPage, setCurrentPage }: NavbarProps) {
                   d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                 />
               </svg>
-            </a>
+            </Link>
           </div>
         </div>
       </div>
