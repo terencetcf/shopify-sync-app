@@ -9,23 +9,6 @@ interface Collection {
   updatedAt: string;
 }
 
-interface CollectionsConnection {
-  edges: {
-    node: Collection;
-    cursor: string;
-  }[];
-  pageInfo: {
-    hasNextPage: boolean;
-    endCursor: string;
-  };
-}
-
-interface CollectionResponse {
-  data: {
-    collections: CollectionsConnection;
-  };
-}
-
 interface CollectionsStore {
   collections: Collection[];
   isLoading: boolean;

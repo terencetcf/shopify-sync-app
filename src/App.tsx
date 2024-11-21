@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Collections from './pages/Collections';
 import Products from './pages/Products';
+import Sync from './pages/Sync';
 import './App.css';
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
             <Route path="/" element={<Navigate to="/collections" replace />} />
             <Route path="/collections" element={<Collections />} />
             <Route path="/products" element={<Products />} />
+            <Route path="/sync" element={<Sync />} />
             <Route path="/theme" element={<div>Theme Coming Soon</div>} />
             <Route path="/settings" element={<div>Settings Coming Soon</div>} />
           </Routes>

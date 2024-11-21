@@ -9,23 +9,6 @@ interface Page {
   bodySummary: string;
 }
 
-interface PagesConnection {
-  edges: {
-    node: Page;
-    cursor: string;
-  }[];
-  pageInfo: {
-    hasNextPage: boolean;
-    endCursor: string;
-  };
-}
-
-interface PageResponse {
-  data: {
-    pages: PagesConnection;
-  };
-}
-
 interface PagesStore {
   pages: Page[];
   isLoading: boolean;

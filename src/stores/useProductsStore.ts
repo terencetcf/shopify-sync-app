@@ -12,23 +12,6 @@ interface Product {
   productType: string;
 }
 
-interface ProductsConnection {
-  edges: {
-    node: Product;
-    cursor: string;
-  }[];
-  pageInfo: {
-    hasNextPage: boolean;
-    endCursor: string;
-  };
-}
-
-interface ProductResponse {
-  data: {
-    products: ProductsConnection;
-  };
-}
-
 interface ProductsStore {
   products: Product[];
   isLoading: boolean;
@@ -38,7 +21,7 @@ interface ProductsStore {
   fetchProducts: (cursor?: string | null) => Promise<void>;
 }
 
-export const useProductsStore = create<ProductsStore>((set, get) => ({
+export const useProductsStore = create<ProductsStore>((set) => ({
   products: [],
   isLoading: false,
   error: null,

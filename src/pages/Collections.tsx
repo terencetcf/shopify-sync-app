@@ -1,6 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useCollectionsStore } from '../stores/useCollectionsStore';
 import ProductsModal from '../components/ProductsModal';
+import axios from 'axios';
+
+interface CollectionProduct {
+  id: string;
+  handle: string;
+}
+
+interface CollectionWithProducts {
+  id: string;
+  handle: string;
+  products: CollectionProduct[];
+}
 
 export default function Collections() {
   const {
@@ -15,6 +27,7 @@ export default function Collections() {
     id: string;
     title: string;
   } | null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
 
   useEffect(() => {
     fetchCollections();
@@ -54,6 +67,107 @@ export default function Collections() {
     }
   };
 
+  const fetchCollectionProducts = async (
+    collectionId: string
+  ): Promise<CollectionProduct[]> => {
+    const { data } = await axios({
+      url: import.meta.env.VITE_SHOPIFY_STORE_URL,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN,
+      },
+      data: {
+        query: `
+          query getCollectionProducts($id: ID!) {
+            collection(id: $id) {
+              products(first: 250) {
+                edges {
+                  node {
+                    id
+                    handle
+                  }
+                }
+              }
+            }
+          }
+        `,
+        variables: {
+          id: collectionId,
+        },
+      },
+    });
+
+    return data.data.collection.products.edges.map(
+      (edge: { node: CollectionProduct }) => edge.node
+    );
+  };
+
+  const exportCollectionsAndProducts = async () => {
+    setExportLoading(true);
+    try {
+      const collectionsWithProducts: CollectionWithProducts[] = [];
+
+      // Fetch products for each collection
+      for (const collection of collections) {
+        const products = await fetchCollectionProducts(collection.id);
+        collectionsWithProducts.push({
+          id: collection.id,
+          handle: collection.handle,
+          products,
+        });
+      }
+
+      // Prepare CSV data
+      const headers = [
+        'Collection ID',
+        'Collection Handle',
+        'Product ID',
+        'Product Handle',
+      ];
+      const csvData: string[][] = [];
+
+      collectionsWithProducts.forEach((collection) => {
+        if (collection.products.length === 0) {
+          // Add row for collection without products
+          csvData.push([collection.id, collection.handle, '', '']);
+        } else {
+          // Add row for each product in collection
+          collection.products.forEach((product) => {
+            csvData.push([
+              collection.id,
+              collection.handle,
+              product.id,
+              product.handle,
+            ]);
+          });
+        }
+      });
+
+      csvData.unshift(headers);
+      const csvString = csvData.map((row) => row.join(',')).join('\n');
+
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute(
+          'download',
+          `collections_and_products_${new Date().toISOString()}.csv`
+        );
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error('Error exporting collections and products:', error);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   if (error) {
     return <div className="text-red-500 p-4 text-center">{error}</div>;
   }
@@ -73,7 +187,57 @@ export default function Collections() {
             </p>
           </div>
         </div>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none space-x-4">
+          <button
+            type="button"
+            onClick={exportCollectionsAndProducts}
+            disabled={exportLoading}
+            className="inline-flex items-center rounded-md bg-green-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-500 transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {exportLoading ? (
+              <>
+                <svg
+                  className="animate-spin -ml-1 mr-2 h-4 w-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Exporting...
+              </>
+            ) : (
+              <>
+                <svg
+                  className="-ml-0.5 mr-2 h-4 w-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+                  />
+                </svg>
+                Export Collections & Products
+              </>
+            )}
+          </button>
           <button
             type="button"
             onClick={exportToCSV}
@@ -93,7 +257,7 @@ export default function Collections() {
                 d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
               />
             </svg>
-            Export to CSV
+            Export Collections
           </button>
         </div>
       </div>
