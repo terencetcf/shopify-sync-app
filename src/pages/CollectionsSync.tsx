@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSyncStore } from '../stores/useCollectionsSyncStore';
+import {
+  ComparisonTable,
+  DirectionSelector,
+  SyncButton,
+  ExportButton,
+} from '../components/CollectionsSync';
+import { ComparisonResult } from '../types/collections';
 
-interface ComparisonResult {
-  handle: string;
-  title: string;
-  productionCount: number | null;
-  stagingCount: number | null;
-  status: 'missing_in_production' | 'missing_in_staging';
-  updatedAt: string | null;
-}
-
-export default function Sync() {
+export default function CollectionsSync() {
   const {
     productionCollections,
     stagingCollections,
@@ -139,42 +137,46 @@ export default function Sync() {
     }
   };
 
-  const exportToCSV = () => {
-    const headers = ['Collection', 'Handle', 'Products Count', 'Last Updated'];
-    const csvData = comparisonResults.map((result) => [
-      result.title,
-      result.handle,
-      compareDirection === 'production_to_staging'
-        ? result.productionCount ?? ''
-        : result.stagingCount ?? '',
-      result.updatedAt ? new Date(result.updatedAt).toLocaleDateString() : '',
-    ]);
-
-    csvData.unshift(headers);
-    const csvString = csvData.map((row) => row.join(',')).join('\n');
-
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute(
-        'download',
-        `sync_report_${compareDirection}_${new Date().toISOString()}.csv`
-      );
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
-
   const handleDirectionChange = (
     newDirection: 'production_to_staging' | 'staging_to_production'
   ) => {
     setCompareDirection(newDirection);
     resetComparison();
     setSelectedItems(new Set());
+  };
+
+  const handleExport = () => {
+    if (comparisonResults.length === 0) return;
+
+    const csvContent = [
+      // CSV Headers
+      ['Title', 'Handle', 'Products Count', 'Last Updated'].join(','),
+      // CSV Data
+      ...comparisonResults.map((result) =>
+        [
+          result.title,
+          result.handle,
+          result.status === 'missing_in_staging'
+            ? result.productionCount
+            : result.stagingCount,
+          result.updatedAt
+            ? new Date(result.updatedAt).toLocaleDateString()
+            : '-',
+        ].join(',')
+      ),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute(
+      'download',
+      `collections-comparison-${new Date().toISOString().split('T')[0]}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (error) {
@@ -200,42 +202,22 @@ export default function Sync() {
       <div className="mt-8 space-y-4">
         <div className="flex items-center justify-between space-x-4">
           <div className="flex items-center space-x-4">
-            <div className="relative">
-              <select
-                value={compareDirection}
-                onChange={(e) =>
-                  handleDirectionChange(
-                    e.target.value as
-                      | 'production_to_staging'
-                      | 'staging_to_production'
-                  )
-                }
-                className="block rounded-md border-0 bg-gray-700 text-white py-1.5 pl-3 pr-10 text-gray-300 ring-1 ring-inset ring-gray-600 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6"
-              >
-                <option value="production_to_staging">
-                  Production → Staging
-                </option>
-                <option value="staging_to_production">
-                  Staging → Production
-                </option>
-              </select>
-              {!isStagingToProductionEnabled &&
-                compareDirection === 'staging_to_production' && (
-                  <div className="absolute left-0 -bottom-6 text-xs text-yellow-400">
-                    Note: Sync to Production is disabled
-                  </div>
-                )}
-            </div>
+            <DirectionSelector
+              value={compareDirection}
+              onChange={handleDirectionChange}
+              isStagingToProductionEnabled={isStagingToProductionEnabled}
+            />
 
             <button
+              type="button"
               onClick={fetchCollections}
               disabled={isLoadingProduction || isLoadingStaging}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center rounded-md bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoadingProduction || isLoadingStaging ? (
                 <>
                   <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -264,85 +246,16 @@ export default function Sync() {
 
           {hasCompared && comparisonResults.length > 0 && (
             <div className="flex items-center space-x-4">
-              <button
-                type="button"
+              <ExportButton
+                onExport={handleExport}
+                disabled={comparisonResults.length === 0}
+              />
+              <SyncButton
+                selectedCount={selectedItems.size}
+                isSyncing={isSyncing}
+                isDisabled={isSyncDisabled}
                 onClick={handleSync}
-                disabled={
-                  selectedItems.size === 0 || isSyncing || isSyncDisabled
-                }
-                className="inline-flex items-center rounded-md bg-green-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                title={
-                  isSyncDisabled
-                    ? 'Syncing from staging to production is temporarily disabled'
-                    : ''
-                }
-              >
-                {isSyncing ? (
-                  <>
-                    <svg
-                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Syncing...
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      className="-ml-0.5 mr-2 h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M7.5 7.5h-.75A2.25 2.25 0 004.5 9.75v7.5a2.25 2.25 0 002.25 2.25h7.5a2.25 2.25 0 002.25-2.25v-7.5a2.25 2.25 0 00-2.25-2.25h-.75m-6 3.75l3 3m0 0l3-3m-3 3V1.5m6 9h.75a2.25 2.25 0 012.25 2.25v7.5a2.25 2.25 0 01-2.25 2.25h-7.5a2.25 2.25 0 01-2.25-2.25v-.75"
-                      />
-                    </svg>
-                    Sync Selected ({selectedItems.size})
-                    {isSyncDisabled && ' (Disabled)'}
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={exportToCSV}
-                className="inline-flex items-center rounded-md bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-              >
-                <svg
-                  className="-ml-0.5 mr-2 h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
-                  />
-                </svg>
-                Export Report
-              </button>
+              />
             </div>
           )}
         </div>
@@ -350,72 +263,12 @@ export default function Sync() {
         {hasCompared && (
           <>
             {comparisonResults.length > 0 ? (
-              <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-                <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                  <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
-                    <table className="min-w-full divide-y divide-gray-700">
-                      <thead className="bg-gray-800">
-                        <tr>
-                          <th
-                            scope="col"
-                            className="relative px-7 sm:w-12 sm:px-6"
-                          >
-                            <input
-                              type="checkbox"
-                              className="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
-                              checked={
-                                selectedItems.size === comparisonResults.length
-                              }
-                              onChange={handleSelectAll}
-                            />
-                          </th>
-                          <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-200 sm:pl-6">
-                            Collection
-                          </th>
-                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200">
-                            Products Count
-                          </th>
-                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200">
-                            Last Updated
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-700 bg-gray-800">
-                        {comparisonResults.map((result) => (
-                          <tr key={result.handle} className="hover:bg-gray-700">
-                            <td className="relative px-7 sm:w-12 sm:px-6">
-                              <input
-                                type="checkbox"
-                                className="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
-                                checked={selectedItems.has(result.handle)}
-                                onChange={() => handleSelectItem(result.handle)}
-                              />
-                            </td>
-                            <td className="py-4 pl-4 pr-3 text-sm text-gray-100 sm:pl-6">
-                              {result.title}
-                              <span className="block text-xs text-gray-400">
-                                {result.handle}
-                              </span>
-                            </td>
-                            <td className="px-3 py-4 text-sm text-gray-300">
-                              {compareDirection === 'production_to_staging'
-                                ? result.productionCount
-                                : result.stagingCount}
-                            </td>
-                            <td className="px-3 py-4 text-sm text-gray-300">
-                              {result.updatedAt
-                                ? new Date(
-                                    result.updatedAt
-                                  ).toLocaleDateString()
-                                : '-'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+              <ComparisonTable
+                results={comparisonResults}
+                selectedItems={selectedItems}
+                onSelectAll={handleSelectAll}
+                onSelectItem={handleSelectItem}
+              />
             ) : (
               <div className="text-center text-gray-400 py-8">
                 No missing collections found in{' '}
