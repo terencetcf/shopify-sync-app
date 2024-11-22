@@ -1,13 +1,24 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useProductsStore } from '../stores/useProductsStore';
+import ProductDetailsPanel from '../components/ProductDetailsPanel';
 
 export default function Products() {
   const { products, isLoading, error, fetchProducts, hasNextPage, endCursor } =
     useProductsStore();
 
+  const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(
+    null
+  );
+
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  const handleProductClick = (id: string) => {
+    setSelectedProductId(id);
+    setIsDetailsPanelOpen(true);
+  };
 
   const loadMore = () => {
     if (hasNextPage && !isLoading) {
@@ -16,21 +27,10 @@ export default function Products() {
   };
 
   const exportToCSV = () => {
-    const headers = [
-      'Title',
-      'Handle',
-      'Status',
-      'Inventory',
-      'Vendor',
-      'Type',
-      'Last Updated',
-    ];
+    const headers = ['Title', 'Handle', 'Product Type', 'Last Updated'];
     const csvData = products.map((product) => [
       product.title,
       product.handle,
-      product.status,
-      product.totalInventory,
-      product.vendor,
       product.productType,
       new Date(product.updatedAt).toLocaleDateString(),
     ]);
@@ -108,15 +108,6 @@ export default function Products() {
                       Handle
                     </th>
                     <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200">
-                      Status
-                    </th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200">
-                      Inventory
-                    </th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200">
-                      Vendor
-                    </th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200">
                       Type
                     </th>
                     <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200">
@@ -126,34 +117,21 @@ export default function Products() {
                 </thead>
                 <tbody className="divide-y divide-gray-700 bg-gray-800">
                   {products.map((product) => (
-                    <tr key={product.id} className="hover:bg-gray-700">
-                      <td className="py-4 pl-4 pr-3 text-sm text-gray-100 sm:pl-6 text-left">
+                    <tr
+                      key={product.id}
+                      className="hover:bg-gray-700 cursor-pointer"
+                      onClick={() => handleProductClick(product.id)}
+                    >
+                      <td className="py-4 pl-4 pr-3 text-sm text-gray-100 sm:pl-6">
                         {product.title}
                       </td>
-                      <td className="px-3 py-4 text-sm text-gray-300 text-left">
+                      <td className="px-3 py-4 text-sm text-gray-300">
                         {product.handle}
                       </td>
-                      <td className="px-3 py-4 text-sm text-left">
-                        <span
-                          className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${
-                            product.status === 'ACTIVE'
-                              ? 'bg-green-400/10 text-green-400'
-                              : 'bg-red-400/10 text-red-400'
-                          }`}
-                        >
-                          {product.status.toLowerCase()}
-                        </span>
-                      </td>
-                      <td className="px-3 py-4 text-sm text-gray-300 text-left">
-                        {product.totalInventory}
-                      </td>
-                      <td className="px-3 py-4 text-sm text-gray-300 text-left">
-                        {product.vendor}
-                      </td>
-                      <td className="px-3 py-4 text-sm text-gray-300 text-left">
+                      <td className="px-3 py-4 text-sm text-gray-300">
                         {product.productType}
                       </td>
-                      <td className="px-3 py-4 text-sm text-gray-300 text-left">
+                      <td className="px-3 py-4 text-sm text-gray-300">
                         {new Date(product.updatedAt).toLocaleDateString()}
                       </td>
                     </tr>
@@ -221,6 +199,15 @@ export default function Products() {
           Total Products: {products.length}
         </div>
       </div>
+
+      <ProductDetailsPanel
+        isOpen={isDetailsPanelOpen}
+        onClose={() => {
+          setIsDetailsPanelOpen(false);
+          setSelectedProductId(null);
+        }}
+        productId={selectedProductId}
+      />
     </div>
   );
 }
