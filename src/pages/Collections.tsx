@@ -3,8 +3,7 @@ import { useCollectionsStore } from '../stores/useCollectionsStore';
 import CollectionDetailsPanel from '../components/CollectionDetails/CollectionDetailsPanel';
 
 export default function Collections() {
-  const { collections, isLoading, error, fetchCollections } =
-    useCollectionsStore();
+  const { collections, error, fetchCollections } = useCollectionsStore();
 
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState<
