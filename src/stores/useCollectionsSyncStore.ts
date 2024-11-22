@@ -11,7 +11,7 @@ interface Collection {
 
 type CompareDirection = 'production_to_staging' | 'staging_to_production';
 
-interface SyncStore {
+interface CollectionsSyncStore {
   productionCollections: Collection[];
   stagingCollections: Collection[];
   isLoadingProduction: boolean;
@@ -29,7 +29,7 @@ interface SyncStore {
   ) => Promise<void>;
 }
 
-export const useSyncStore = create<SyncStore>((set, get) => ({
+export const useSyncStore = create<CollectionsSyncStore>((set, get) => ({
   productionCollections: [],
   stagingCollections: [],
   isLoadingProduction: false,

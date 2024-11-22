@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSyncStore } from '../stores/useSyncStore';
+import { useSyncStore } from '../stores/useCollectionsSyncStore';
 
 interface ComparisonResult {
   handle: string;
@@ -187,7 +187,7 @@ export default function Sync() {
         <div className="sm:flex-auto">
           <div className="border-l-4 border-blue-500 pl-4">
             <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
-              Sync Status
+              Collections Sync
             </h1>
             <p className="text-sm text-gray-400 max-w-2xl">
               Compare collections between production and staging environments.
