@@ -2,7 +2,10 @@ export interface BasicCollection {
   id: string;
   title: string;
   handle: string;
-  productsCount: number;
+  productsCount: {
+    count: number;
+    precision: number;
+  };
   updatedAt: string;
 }
 
@@ -12,7 +15,10 @@ export interface DetailedCollection {
   handle: string;
   description: string;
   descriptionHtml: string;
-  productsCount: number;
+  productsCount: {
+    count: number;
+    precision: number;
+  };
   updatedAt: string;
   products: {
     edges: Array<{

@@ -3,7 +3,14 @@ import { useCollectionsStore } from '../stores/useCollectionsStore';
 import CollectionDetailsPanel from '../components/CollectionDetails/CollectionDetailsPanel';
 
 export default function Collections() {
-  const { collections, error, fetchCollections } = useCollectionsStore();
+  const {
+    collections,
+    error,
+    isLoading,
+    hasNextPage,
+    endCursor,
+    fetchCollections,
+  } = useCollectionsStore();
 
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState<
@@ -17,6 +24,42 @@ export default function Collections() {
   const handleCollectionClick = (id: string) => {
     setSelectedCollectionId(id);
     setIsDetailsPanelOpen(true);
+  };
+
+  const handleLoadMore = () => {
+    if (hasNextPage) {
+      fetchCollections(endCursor);
+    }
+  };
+
+  const handleExport = () => {
+    if (collections.length === 0) return;
+
+    const csvContent = [
+      // CSV Headers
+      ['Title', 'Handle', 'Products Count', 'Last Updated'].join(','),
+      // CSV Data
+      ...collections.map((collection) =>
+        [
+          `"${collection.title}"`, // Wrap in quotes to handle titles with commas
+          collection.handle,
+          collection.productsCount.count,
+          new Date(collection.updatedAt).toLocaleDateString(),
+        ].join(',')
+      ),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute(
+      'download',
+      `collections-${new Date().toISOString().split('T')[0]}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (error) {
@@ -36,6 +79,16 @@ export default function Collections() {
               and collection details.
             </p>
           </div>
+        </div>
+        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={collections.length === 0}
+            className="inline-flex items-center rounded-md bg-gray-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-500 transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Export to CSV
+          </button>
         </div>
       </div>
 
@@ -74,7 +127,7 @@ export default function Collections() {
                         {collection.handle}
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-300">
-                        {collection.productsCount}
+                        {collection.productsCount.count}
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-300">
                         {new Date(collection.updatedAt).toLocaleDateString()}
@@ -87,6 +140,45 @@ export default function Collections() {
           </div>
         </div>
       </div>
+
+      {/* Load More Button */}
+      {hasNextPage && (
+        <div className="mt-4 flex justify-center">
+          <button
+            onClick={handleLoadMore}
+            disabled={isLoading}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <>
+                <svg
+                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Loading...
+              </>
+            ) : (
+              'Load More'
+            )}
+          </button>
+        </div>
+      )}
 
       <div className="mt-4 flex justify-end">
         <div className="inline-flex items-center px-3 py-2 rounded-md bg-gray-800 text-sm text-gray-300">

@@ -10,6 +10,7 @@ import {
   COLLECTIONS_QUERY,
   COLLECTION_DETAILS_QUERY,
 } from '../graphql/queries/collections';
+import { PAGES_QUERY, PAGE_DETAILS_QUERY } from '../graphql/queries/pages';
 
 interface ProductsResponse {
   products: {
@@ -110,5 +111,39 @@ export const shopifyApi = {
     });
 
     return data.data as CollectionResponse;
+  },
+
+  async fetchPages(cursor?: string | null) {
+    const { data } = await axios({
+      url: import.meta.env.VITE_SHOPIFY_STORE_URL,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN,
+      },
+      data: {
+        query: print(PAGES_QUERY),
+        variables: { cursor },
+      },
+    });
+
+    return data.data;
+  },
+
+  async fetchPageDetails(id: string) {
+    const { data } = await axios({
+      url: import.meta.env.VITE_SHOPIFY_STORE_URL,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN,
+      },
+      data: {
+        query: print(PAGE_DETAILS_QUERY),
+        variables: { id },
+      },
+    });
+
+    return data.data;
   },
 };

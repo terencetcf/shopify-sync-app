@@ -5,7 +5,10 @@ interface Collection {
   id: string;
   title: string;
   handle: string;
-  productsCount: number;
+  productsCount: {
+    count: number;
+    precision: number;
+  };
   updatedAt: string;
 }
 
@@ -61,7 +64,10 @@ export const useSyncStore = create<CollectionsSyncStore>((set, get) => ({
                     id
                     title
                     handle
-                    productsCount
+                    productsCount {
+                      count
+                      precision
+                    }
                     updatedAt
                   }
                 }
@@ -89,7 +95,10 @@ export const useSyncStore = create<CollectionsSyncStore>((set, get) => ({
                     id
                     title
                     handle
-                    productsCount
+                    productsCount {
+                      count
+                      precision
+                    }
                     updatedAt
                   }
                 }

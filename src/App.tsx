@@ -4,6 +4,7 @@ import Collections from './pages/Collections';
 import Products from './pages/Products';
 import Sync from './pages/CollectionsSync';
 import ProductSync from './pages/ProductsSync';
+import PagesSync from './pages/PagesSync';
 import './App.css';
 
 function App() {
@@ -18,13 +19,11 @@ function App() {
             <Route path="/products" element={<Products />} />
             <Route path="/collections-sync" element={<Sync />} />
             <Route path="/products-sync" element={<ProductSync />} />
-            <Route path="/theme" element={<div>Theme Coming Soon</div>} />
-            <Route path="/settings" element={<div>Settings Coming Soon</div>} />
+            <Route path="/pages-sync" element={<PagesSync />} />
           </Routes>
         </main>
       </div>
     </BrowserRouter>
   );
 }
-
 export default App;

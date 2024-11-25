@@ -8,7 +8,10 @@ export const COLLECTIONS_QUERY = gql`
           id
           title
           handle
-          productsCount
+          productsCount {
+            count
+            precision
+          }
           updatedAt
         }
       }
@@ -29,7 +32,10 @@ export const COLLECTION_DETAILS_QUERY = gql`
         handle
         description
         descriptionHtml
-        productsCount
+        productsCount {
+          count
+          precision
+        }
         updatedAt
         products(first: 25) {
           edges {

@@ -13,7 +13,7 @@ export default function Navbar() {
       key: 'collections-sync',
     },
     { name: 'Products Sync', href: '/products-sync', key: 'products-sync' },
-    { name: 'Theme', href: '/theme', key: 'theme' },
+    { name: 'Pages Sync', href: '/pages-sync', key: 'pages-sync' },
   ];
 
   return (

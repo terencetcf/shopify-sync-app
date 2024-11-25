@@ -114,7 +114,7 @@ export default function CollectionDetailsPanel({
                               Products Count
                             </h4>
                             <p className="mt-1 text-sm text-gray-200">
-                              {selectedCollection.productsCount}
+                              {selectedCollection.productsCount.count}
                             </p>
                           </div>
                         </div>

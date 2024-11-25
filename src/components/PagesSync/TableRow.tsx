@@ -1,4 +1,4 @@
-import { ComparisonResult } from '../../types/collections';
+import { ComparisonResult } from '../../types/pages';
 
 interface TableRowProps {
   result: ComparisonResult;
@@ -12,7 +12,7 @@ export default function TableRow({
   onSelect,
 }: TableRowProps) {
   return (
-    <tr key={result.handle} className="hover:bg-gray-700">
+    <tr key={result.id} className="hover:bg-gray-700">
       <td className="relative px-7 sm:w-12 sm:px-6">
         <input
           type="checkbox"
@@ -22,13 +22,9 @@ export default function TableRow({
         />
       </td>
       <td className="py-4 pl-4 pr-3 text-sm text-gray-100 sm:pl-6">
-        {result.title}
-        <span className="block text-xs text-gray-400">{result.handle}</span>
-      </td>
-      <td className="px-3 py-4 text-sm text-gray-300">
-        {result.status === 'missing_in_staging'
-          ? result.productionCount?.count
-          : result.stagingCount?.count}
+        {result.title}{' '}
+        <span className="text-xs text-gray-400">({result.handle})</span>
+        <span className="block text-xs text-gray-400">{result.id}</span>
       </td>
       <td className="px-3 py-4 text-sm text-gray-300">
         {result.updatedAt

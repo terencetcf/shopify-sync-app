@@ -35,7 +35,8 @@ export default defineConfig(async () => ({
         rewrite: (path) => path.replace(/^\/shopify/, ''),
       },
       '/staging': {
-        target: 'https://shoptest-shakerdoors-co-uk.myshopify.com',
+        target: 'https://a3be2p-dw.myshopify.com',
+        // target: 'https://shoptest-shakerdoors-co-uk.myshopify.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/staging/, ''),
       },
