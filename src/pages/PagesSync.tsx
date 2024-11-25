@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { usePagesStore } from '../stores/usePagesStore';
+import { usePagesSyncStore } from '../stores/usePagesSyncStore';
 import {
   ComparisonTable,
   DirectionSelector,
@@ -23,7 +23,7 @@ export default function PagesSync() {
     comparePages,
     syncPages,
     exportComparison,
-  } = usePagesStore();
+  } = usePagesSyncStore();
 
   const handleCompare = async () => {
     await comparePages(compareDirection);

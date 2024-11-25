@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { usePagesStore } from '../stores/usePagesStore';
+import { usePagesSyncStore } from '../stores/usePagesSyncStore';
 
 export default function Pages() {
   const { pages, isLoading, error, fetchPages, hasNextPage, endCursor } =
-    usePagesStore();
+    usePagesSyncStore();
 
   useEffect(() => {
     fetchPages();

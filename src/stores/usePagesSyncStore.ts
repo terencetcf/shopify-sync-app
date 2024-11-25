@@ -18,7 +18,7 @@ interface ComparisonResult {
   updatedAt: string | null;
 }
 
-interface PagesStore {
+interface PagesSyncStore {
   pages: Page[];
   comparisonResults: ComparisonResult[];
   isLoading: boolean;
@@ -37,7 +37,7 @@ interface PagesStore {
   ) => void;
 }
 
-export const usePagesStore = create<PagesStore>((set, get) => ({
+export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
   pages: [],
   comparisonResults: [],
   isLoading: false,
