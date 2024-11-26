@@ -25,10 +25,22 @@ export default function TableRow({
         {result.title}
         <span className="block text-xs text-gray-400">{result.handle}</span>
       </td>
-      <td className="px-3 py-4 text-sm text-gray-300">
-        {result.status === 'missing_in_staging'
-          ? result.productionInventory
-          : result.stagingInventory}
+      <td className="whitespace-nowrap px-3 py-4 text-sm">
+        <span
+          className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${
+            result.status === 'different'
+              ? 'bg-yellow-400/10 text-yellow-400'
+              : result.status === 'missing_in_staging'
+              ? 'bg-red-400/10 text-red-400'
+              : 'bg-blue-400/10 text-blue-400'
+          }`}
+        >
+          {result.status === 'different'
+            ? `Different (${result.differences?.join(', ')})`
+            : result.status === 'missing_in_staging'
+            ? 'Missing in Staging'
+            : 'Missing in Production'}
+        </span>
       </td>
       <td className="px-3 py-4 text-sm text-gray-300">
         {result.updatedAt
