@@ -6,6 +6,7 @@ import {
   SyncButton,
   ExportButton,
 } from '../components/ProductsSync';
+import { formatDate } from '../utils/formatDate';
 
 export default function ProductsSync() {
   const {
@@ -62,7 +63,6 @@ export default function ProductsSync() {
   };
 
   const handleExport = () => {
-    // Convert comparison results to CSV
     const csvContent = [
       ['Title', 'Handle', 'Status', 'Last Updated'].join(','),
       ...comparisonResults.map((result) =>
@@ -74,9 +74,7 @@ export default function ProductsSync() {
             : result.status === 'missing_in_staging'
             ? 'Missing in Staging'
             : 'Missing in Production',
-          result.updatedAt
-            ? new Date(result.updatedAt).toLocaleDateString()
-            : '',
+          formatDate(result.updatedAt),
         ].join(',')
       ),
     ].join('\n');

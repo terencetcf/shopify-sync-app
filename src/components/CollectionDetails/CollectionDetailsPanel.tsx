@@ -8,6 +8,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Fragment, useEffect } from 'react';
 import { useCollectionsStore } from '../../stores/useCollectionsStore';
 import CollectionProducts from './CollectionProducts';
+import { formatDate } from '../../utils/formatDate';
 
 interface CollectionDetailsPanelProps {
   isOpen: boolean;
@@ -143,9 +144,7 @@ export default function CollectionDetailsPanel({
                               Last Updated
                             </h4>
                             <p className="mt-1 text-sm text-gray-200">
-                              {new Date(
-                                selectedCollection.updatedAt
-                              ).toLocaleString()}
+                              {formatDate(selectedCollection.updatedAt)}
                             </p>
                           </div>
                         </div>

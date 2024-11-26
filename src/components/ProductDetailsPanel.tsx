@@ -7,6 +7,7 @@ import {
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Fragment, useEffect } from 'react';
 import { useProductsStore } from '../stores/useProductsStore';
+import { formatDate } from '../utils/formatDate';
 
 interface ProductDetailsPanelProps {
   isOpen: boolean;
@@ -222,9 +223,7 @@ export default function ProductDetailsPanel({
                               Last Updated
                             </h4>
                             <p className="mt-1 text-sm text-gray-200">
-                              {new Date(
-                                selectedProduct.updatedAt
-                              ).toLocaleString()}
+                              {formatDate(selectedProduct.updatedAt)}
                             </p>
                           </div>
                         </div>

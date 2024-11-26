@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useProductsStore } from '../stores/useProductsStore';
 import ProductDetailsPanel from '../components/ProductDetailsPanel';
+import { formatDate } from '../utils/formatDate';
 
 export default function Products() {
   const { products, isLoading, error, fetchProducts, hasNextPage, endCursor } =
@@ -132,7 +133,7 @@ export default function Products() {
                         {product.productType}
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-300">
-                        {new Date(product.updatedAt).toLocaleDateString()}
+                        {formatDate(product.updatedAt)}
                       </td>
                     </tr>
                   ))}

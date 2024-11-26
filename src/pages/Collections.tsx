@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useCollectionsStore } from '../stores/useCollectionsStore';
 import CollectionDetailsPanel from '../components/CollectionDetails/CollectionDetailsPanel';
+import { formatDate } from '../utils/formatDate';
 
 export default function Collections() {
   const {
@@ -130,7 +131,7 @@ export default function Collections() {
                         {collection.productsCount.count}
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-300">
-                        {new Date(collection.updatedAt).toLocaleDateString()}
+                        {formatDate(collection.updatedAt)}
                       </td>
                     </tr>
                   ))}

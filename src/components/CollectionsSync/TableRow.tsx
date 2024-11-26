@@ -1,4 +1,5 @@
 import { ComparisonResult } from '../../types/collections';
+import { formatDate } from '../../utils/formatDate';
 
 interface TableRowProps {
   result: ComparisonResult;
@@ -58,10 +59,8 @@ export default function TableRow({
             : 'Missing in Production'}
         </span>
       </td>
-      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
-        {result.updatedAt
-          ? new Date(result.updatedAt).toLocaleDateString()
-          : '-'}
+      <td className="px-3 py-4 text-sm text-gray-300">
+        {formatDate(result.updatedAt)}
       </td>
     </tr>
   );
