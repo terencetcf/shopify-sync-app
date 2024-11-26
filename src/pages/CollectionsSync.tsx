@@ -1,28 +1,26 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useSyncStore } from '../stores/useCollectionsSyncStore';
+import { useEffect, useState } from 'react';
+import { useCollectionsSyncStore } from '../stores/useCollectionsSyncStore';
 import {
   ComparisonTable,
   DirectionSelector,
   SyncButton,
   ExportButton,
 } from '../components/CollectionsSync';
-import { ComparisonResult } from '../types/collections';
 
 export default function CollectionsSync() {
   const {
-    productionCollections,
-    stagingCollections,
+    comparisonResults,
     isLoadingProduction,
     isLoadingStaging,
     error,
-    fetchCollections,
+    compareCollections,
     compareDirection,
     setCompareDirection,
     hasCompared,
     resetComparison,
     syncCollections,
     isStagingToProductionEnabled,
-  } = useSyncStore();
+  } = useCollectionsSyncStore();
 
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [isSyncing, setIsSyncing] = useState(false);
@@ -32,62 +30,11 @@ export default function CollectionsSync() {
     setSelectedItems(new Set());
   }, [resetComparison]);
 
-  const comparisonResults = useMemo(() => {
-    if (!hasCompared) return [];
-
-    const results: ComparisonResult[] = [];
-
-    if (compareDirection === 'production_to_staging') {
-      productionCollections.forEach((prodCollection) => {
-        const stagingCollection = stagingCollections.find(
-          (s) => s.handle === prodCollection.handle
-        );
-
-        if (!stagingCollection) {
-          results.push({
-            handle: prodCollection.handle,
-            title: prodCollection.title,
-            productionCount: prodCollection.productsCount,
-            stagingCount: null,
-            status: 'missing_in_staging',
-            updatedAt: prodCollection.updatedAt,
-          });
-        }
-      });
-    } else {
-      stagingCollections.forEach((stagingCollection) => {
-        const prodCollection = productionCollections.find(
-          (p) => p.handle === stagingCollection.handle
-        );
-
-        if (!prodCollection) {
-          results.push({
-            handle: stagingCollection.handle,
-            title: stagingCollection.title,
-            productionCount: null,
-            stagingCount: stagingCollection.productsCount,
-            status: 'missing_in_production',
-            updatedAt: stagingCollection.updatedAt,
-          });
-        }
-      });
-    }
-
-    return results;
-  }, [
-    productionCollections,
-    stagingCollections,
-    compareDirection,
-    hasCompared,
-  ]);
-
   const handleSelectAll = () => {
     if (selectedItems.size === comparisonResults.length) {
       setSelectedItems(new Set());
     } else {
-      setSelectedItems(
-        new Set(comparisonResults.map((result) => result.handle))
-      );
+      setSelectedItems(new Set(comparisonResults.map((result) => result.id)));
     }
   };
 
@@ -117,12 +64,10 @@ export default function CollectionsSync() {
 
     setIsSyncing(true);
     try {
-      const handles = Array.from(selectedItems);
+      const ids = Array.from(selectedItems);
 
       // Sync collections one by one
-      for (const handle of handles) {
-        await syncCollections([handle], compareDirection);
-      }
+      await syncCollections(ids, compareDirection);
 
       // Reset selection after successful sync
       setSelectedItems(new Set());
@@ -184,7 +129,7 @@ export default function CollectionsSync() {
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8">
+    <div className="px-5">
       <div className="sm:flex sm:items-center sm:justify-between">
         <div className="sm:flex-auto">
           <div className="border-l-4 border-blue-500 pl-4">
@@ -210,7 +155,7 @@ export default function CollectionsSync() {
 
             <button
               type="button"
-              onClick={fetchCollections}
+              onClick={() => compareCollections(compareDirection)}
               disabled={isLoadingProduction || isLoadingStaging}
               className="inline-flex items-center rounded-md bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >

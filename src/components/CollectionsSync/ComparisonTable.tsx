@@ -6,7 +6,7 @@ interface ComparisonTableProps {
   results: ComparisonResult[];
   selectedItems: Set<string>;
   onSelectAll: () => void;
-  onSelectItem: (handle: string) => void;
+  onSelectItem: (id: string) => void;
 }
 
 export default function ComparisonTable({
@@ -30,10 +30,10 @@ export default function ComparisonTable({
             <tbody className="divide-y divide-gray-700 bg-gray-800">
               {results.map((result) => (
                 <TableRow
-                  key={result.handle}
+                  key={result.id}
                   result={result}
-                  isSelected={selectedItems.has(result.handle)}
-                  onSelect={() => onSelectItem(result.handle)}
+                  isSelected={selectedItems.has(result.id)}
+                  onSelect={() => onSelectItem(result.id)}
                 />
               ))}
             </tbody>

@@ -36,6 +36,12 @@ export default function TableHeader({
           scope="col"
           className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200"
         >
+          Status
+        </th>
+        <th
+          scope="col"
+          className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200"
+        >
           Last Updated
         </th>
       </tr>
