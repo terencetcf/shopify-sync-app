@@ -20,17 +20,18 @@ export interface CollectionDetails {
   title: string;
   handle: string;
   descriptionHtml: string;
-  ruleSet?: {
-    rules: Array<{
-      column: string;
-      relation: string;
-      condition: string;
-    }>;
-  };
-  sortOrder: string;
-  publishedAt: string | null;
-  templateSuffix: string | null;
   updatedAt: string;
+  sortOrder: string;
+  templateSuffix: string | null;
+  image?: {
+    id: string;
+    url: string;
+    altText: string | null;
+  };
+  seo?: {
+    title: string;
+    description: string;
+  };
   productsCount?: {
     count: number;
     precision: number;

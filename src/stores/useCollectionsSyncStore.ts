@@ -112,17 +112,19 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
                     id
                     title
                     handle
-                    descriptionHtml
-                    sortOrder
-                    templateSuffix
-                    ruleSet {
-                      rules {
-                        column
-                        relation
-                        condition
-                      }
-                    }
                     updatedAt
+                    sortOrder
+                    descriptionHtml
+                    templateSuffix
+                    image {
+                      id
+                      url
+                      altText
+                    }
+                    seo {
+                      title
+                      description
+                    }
                   }
                 }
               }
@@ -139,7 +141,6 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
     compareCollections: async (direction: CompareDirection) => {
       set({ isLoading: true, error: null });
       try {
-        // First fetch all collections to ensure we have latest data
         await get().fetchCollections();
 
         const sourceCollections =
@@ -187,29 +188,49 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
             if (sourceCollection.title !== targetCollection.title) {
               differences.push('title');
             }
-
+            if (sourceCollection.sortOrder !== targetCollection.sortOrder) {
+              differences.push('sortOrder');
+            }
             if (
               sourceCollection.descriptionHtml !==
               targetCollection.descriptionHtml
             ) {
               differences.push('description');
             }
-
-            if (sourceCollection.sortOrder !== targetCollection.sortOrder) {
-              differences.push('sortOrder');
-            }
-
             if (
               sourceCollection.templateSuffix !==
               targetCollection.templateSuffix
             ) {
               differences.push('template');
             }
+
+            // Compare image fields
+            const sourceTimestamp = getImageTimestamp(
+              sourceCollection.image?.url
+            );
+            const targetTimestamp = getImageTimestamp(
+              targetCollection.image?.url
+            );
+
             if (
-              JSON.stringify(sourceCollection.ruleSet?.rules) !==
-              JSON.stringify(targetCollection.ruleSet?.rules)
+              // Source has image but target doesn't
+              (sourceCollection.image?.url && !targetCollection.image?.url) ||
+              // Source image is newer than target
+              sourceTimestamp > targetTimestamp ||
+              // Alt text is different
+              sourceCollection.image?.altText !==
+                targetCollection.image?.altText
             ) {
-              differences.push('rules');
+              differences.push('image');
+            }
+
+            // Compare SEO fields
+            if (
+              sourceCollection.seo?.title !== targetCollection.seo?.title ||
+              sourceCollection.seo?.description !==
+                targetCollection.seo?.description
+            ) {
+              differences.push('seo');
             }
 
             if (differences.length > 0) {
@@ -252,6 +273,11 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
             ? get().productionCollections
             : get().stagingCollections;
 
+        const targetCollections =
+          direction === 'production_to_staging'
+            ? get().stagingCollections
+            : get().productionCollections;
+
         const targetUrl =
           direction === 'production_to_staging'
             ? import.meta.env.VITE_SHOPIFY_STAGING_STORE_URL
@@ -270,28 +296,9 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
           if (!sourceCollection) continue;
 
           // First check if collection exists in target
-          const checkResponse = await axios({
-            url: targetUrl,
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Shopify-Access-Token': targetToken,
-            },
-            data: {
-              query: `
-                query GetCollectionByHandle($handle: String!) {
-                  collectionByHandle(handle: $handle) {
-                    id
-                  }
-                }
-              `,
-              variables: {
-                handle: sourceCollection.handle,
-              },
-            },
-          });
-
-          const existingCollection = checkResponse.data.data.collectionByHandle;
+          const existingCollection = targetCollections.find(
+            (col) => col.handle === sourceCollection.handle
+          );
 
           if (existingCollection) {
             // Update existing collection
@@ -309,8 +316,10 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
                       collection {
                         id
                         title
-                        description
                         handle
+                        image {
+                          id
+                        }
                       }
                       userErrors {
                         field
@@ -326,6 +335,19 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
                     descriptionHtml: sourceCollection.descriptionHtml,
                     sortOrder: sourceCollection.sortOrder,
                     templateSuffix: sourceCollection.templateSuffix,
+                    image: sourceCollection.image
+                      ? {
+                          id: sourceCollection.image.id,
+                          altText: sourceCollection.image.altText,
+                          src: sourceCollection.image.url,
+                        }
+                      : undefined,
+                    seo: sourceCollection.seo
+                      ? {
+                          title: sourceCollection.seo.title,
+                          description: sourceCollection.seo.description,
+                        }
+                      : undefined,
                   },
                 },
               },
@@ -345,7 +367,11 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
                     collectionCreate(input: $input) {
                       collection {
                         id
+                        title
                         handle
+                        image {
+                          id
+                        }
                       }
                       userErrors {
                         field
@@ -361,7 +387,19 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
                     descriptionHtml: sourceCollection.descriptionHtml,
                     sortOrder: sourceCollection.sortOrder,
                     templateSuffix: sourceCollection.templateSuffix,
-                    ruleSet: sourceCollection.ruleSet,
+                    image: sourceCollection.image
+                      ? {
+                          id: sourceCollection.image.id,
+                          altText: sourceCollection.image.altText,
+                          src: sourceCollection.image.url,
+                        }
+                      : undefined,
+                    seo: sourceCollection.seo
+                      ? {
+                          title: sourceCollection.seo.title,
+                          description: sourceCollection.seo.description,
+                        }
+                      : undefined,
                   },
                 },
               },
@@ -391,3 +429,10 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
     },
   })
 );
+
+// Add helper function to extract timestamp from image URL
+const getImageTimestamp = (url: string | undefined): number => {
+  if (!url) return 0;
+  const match = url.match(/v=(\d+)/);
+  return match ? parseInt(match[1]) : 0;
+};

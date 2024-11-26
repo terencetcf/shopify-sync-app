@@ -38,12 +38,12 @@ export default function CollectionsSync() {
     }
   };
 
-  const handleSelectItem = (handle: string) => {
+  const handleSelectItem = (id: string) => {
     const newSelected = new Set(selectedItems);
-    if (newSelected.has(handle)) {
-      newSelected.delete(handle);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
     } else {
-      newSelected.add(handle);
+      newSelected.add(id);
     }
     setSelectedItems(newSelected);
   };
