@@ -1,149 +1,46 @@
 import axios from 'axios';
-import { print } from 'graphql';
-import { BasicProduct, DetailedProduct } from '../types/product';
-import { BasicCollection, DetailedCollection } from '../types/collection';
-import {
-  PRODUCTS_QUERY,
-  PRODUCT_DETAILS_QUERY,
-} from '../graphql/queries/products';
-import {
-  COLLECTIONS_QUERY,
-  COLLECTION_DETAILS_QUERY,
-} from '../graphql/queries/collections';
-import { PAGES_QUERY, PAGE_DETAILS_QUERY } from '../graphql/queries/pages';
+import { Environment } from '../types/sync';
 
-interface ProductsResponse {
-  products: {
-    edges: Array<{
-      node: BasicProduct;
-    }>;
-    pageInfo: {
-      hasNextPage: boolean;
-      endCursor: string;
-    };
-  };
+interface ShopifyRequestData {
+  query: string;
+  variables?: Record<string, any>;
 }
 
-interface ProductResponse {
-  node: DetailedProduct;
+interface ShopifyResponse<T> {
+  data: T;
 }
 
-interface CollectionsResponse {
-  collections: {
-    edges: Array<{
-      node: BasicCollection;
-    }>;
-    pageInfo: {
-      hasNextPage: boolean;
-      endCursor: string;
-    };
-  };
-}
-
-interface CollectionResponse {
-  node: DetailedCollection;
-}
+const ENVIRONMENT_CONFIGS: Record<
+  Environment,
+  { url: string; accessToken: string }
+> = {
+  production: {
+    url: import.meta.env.VITE_SHOPIFY_STORE_URL,
+    accessToken: import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN,
+  },
+  staging: {
+    url: import.meta.env.VITE_SHOPIFY_STAGING_STORE_URL,
+    accessToken: import.meta.env.VITE_SHOPIFY_STAGING_ACCESS_TOKEN,
+  },
+};
 
 export const shopifyApi = {
-  async fetchProducts(cursor?: string | null) {
-    const { data } = await axios({
-      url: import.meta.env.VITE_SHOPIFY_STORE_URL,
-      method: 'POST',
+  async post<T>(
+    environment: Environment,
+    data: ShopifyRequestData
+  ): Promise<T> {
+    const envConfig = ENVIRONMENT_CONFIGS[environment];
+
+    const response = await axios<ShopifyResponse<T>>({
+      url: envConfig.url,
       headers: {
+        'X-Shopify-Access-Token': envConfig.accessToken,
         'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN,
       },
-      data: {
-        query: print(PRODUCTS_QUERY),
-        variables: { cursor },
-      },
+      method: 'POST',
+      data,
     });
 
-    return data.data as ProductsResponse;
-  },
-
-  async fetchProductDetails(id: string) {
-    const { data } = await axios({
-      url: import.meta.env.VITE_SHOPIFY_STORE_URL,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN,
-      },
-      data: {
-        query: print(PRODUCT_DETAILS_QUERY),
-        variables: { id },
-      },
-    });
-
-    return data.data as ProductResponse;
-  },
-
-  async fetchCollections(cursor?: string | null) {
-    const { data } = await axios({
-      url: import.meta.env.VITE_SHOPIFY_STORE_URL,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN,
-      },
-      data: {
-        query: print(COLLECTIONS_QUERY),
-        variables: { cursor },
-      },
-    });
-
-    return data.data as CollectionsResponse;
-  },
-
-  async fetchCollectionDetails(id: string) {
-    const { data } = await axios({
-      url: import.meta.env.VITE_SHOPIFY_STORE_URL,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN,
-      },
-      data: {
-        query: print(COLLECTION_DETAILS_QUERY),
-        variables: { id },
-      },
-    });
-
-    return data.data as CollectionResponse;
-  },
-
-  async fetchPages(cursor?: string | null) {
-    const { data } = await axios({
-      url: import.meta.env.VITE_SHOPIFY_STORE_URL,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN,
-      },
-      data: {
-        query: print(PAGES_QUERY),
-        variables: { cursor },
-      },
-    });
-
-    return data.data;
-  },
-
-  async fetchPageDetails(id: string) {
-    const { data } = await axios({
-      url: import.meta.env.VITE_SHOPIFY_STORE_URL,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN,
-      },
-      data: {
-        query: print(PAGE_DETAILS_QUERY),
-        variables: { id },
-      },
-    });
-
-    return data.data;
+    return response.data.data;
   },
 };

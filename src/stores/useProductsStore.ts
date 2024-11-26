@@ -1,6 +1,25 @@
 import { create } from 'zustand';
 import { shopifyApi } from '../services/shopify';
 import { BasicProduct, DetailedProduct } from '../types/product';
+import {
+  PRODUCT_DETAILS_QUERY,
+  PRODUCTS_QUERY,
+} from '../graphql/queries/products';
+import { print } from 'graphql';
+import { PageInfo } from '../types/pageInfo';
+
+interface ProductsResponse {
+  products: {
+    edges: Array<{
+      node: BasicProduct;
+    }>;
+    pageInfo: PageInfo;
+  };
+}
+
+interface ProductResponse {
+  node: DetailedProduct;
+}
 
 interface ProductsStore {
   products: BasicProduct[];
@@ -26,7 +45,10 @@ export const useProductsStore = create<ProductsStore>((set) => ({
   fetchProducts: async (cursor?: string | null) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await shopifyApi.fetchProducts(cursor);
+      const response = await shopifyApi.post<ProductsResponse>('production', {
+        query: print(PRODUCTS_QUERY),
+        variables: { cursor },
+      });
       const productsData = response.products.edges.map((edge) => edge.node);
 
       set((state) => ({
@@ -46,7 +68,10 @@ export const useProductsStore = create<ProductsStore>((set) => ({
   fetchProductDetails: async (id: string) => {
     set({ isLoadingDetails: true, error: null });
     try {
-      const response = await shopifyApi.fetchProductDetails(id);
+      const response = await shopifyApi.post<ProductResponse>('production', {
+        query: print(PRODUCT_DETAILS_QUERY),
+        variables: { id },
+      });
       set({
         selectedProduct: response.node,
         isLoadingDetails: false,

@@ -1,6 +1,25 @@
 import { create } from 'zustand';
 import { shopifyApi } from '../services/shopify';
 import { BasicCollection, DetailedCollection } from '../types/collection';
+import {
+  COLLECTION_DETAILS_QUERY,
+  COLLECTIONS_QUERY,
+} from '../graphql/queries/collections';
+import { print } from 'graphql';
+import { PageInfo } from '../types/pageInfo';
+
+interface CollectionsResponse {
+  collections: {
+    edges: Array<{
+      node: BasicCollection;
+    }>;
+    pageInfo: PageInfo;
+  };
+}
+
+interface CollectionResponse {
+  node: DetailedCollection;
+}
 
 interface CollectionsStore {
   collections: BasicCollection[];
@@ -26,7 +45,13 @@ export const useCollectionsStore = create<CollectionsStore>((set) => ({
   fetchCollections: async (cursor?: string | null) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await shopifyApi.fetchCollections(cursor);
+      const response = await shopifyApi.post<CollectionsResponse>(
+        'production',
+        {
+          query: print(COLLECTIONS_QUERY),
+          variables: { cursor },
+        }
+      );
       const collectionsData = response.collections.edges.map(
         (edge) => edge.node
       );
@@ -51,7 +76,10 @@ export const useCollectionsStore = create<CollectionsStore>((set) => ({
   fetchCollectionDetails: async (id: string) => {
     set({ isLoadingDetails: true, error: null });
     try {
-      const response = await shopifyApi.fetchCollectionDetails(id);
+      const response = await shopifyApi.post<CollectionResponse>('production', {
+        query: print(COLLECTION_DETAILS_QUERY),
+        variables: { id },
+      });
       set({
         selectedCollection: response.node,
         isLoadingDetails: false,
