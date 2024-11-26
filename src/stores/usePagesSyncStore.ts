@@ -14,8 +14,30 @@ interface ComparisonResult {
   id: string;
   handle: string;
   title: string;
-  status: 'missing_in_staging' | 'missing_in_production';
+  status: 'missing_in_staging' | 'missing_in_production' | 'different';
+  differences?: string[];
   updatedAt: string | null;
+}
+
+interface PageDetails {
+  id: string;
+  title: string;
+  handle: string;
+  body: string;
+  bodySummary: string;
+  isPublished: boolean;
+  publishedAt: string | null;
+  templateSuffix: string | null;
+  metafields: {
+    edges: Array<{
+      node: {
+        namespace: string;
+        key: string;
+        value: string;
+        type: string;
+      };
+    }>;
+  };
 }
 
 interface PagesSyncStore {
@@ -36,6 +58,33 @@ interface PagesSyncStore {
     direction: CompareDirection
   ) => void;
 }
+
+const arePageDetailsEqual = (
+  source: PageDetails,
+  target: PageDetails
+): boolean => {
+  return (
+    source.title === target.title &&
+    source.body === target.body &&
+    source.bodySummary === target.bodySummary &&
+    source.isPublished === target.isPublished &&
+    source.templateSuffix === target.templateSuffix &&
+    // Compare metafields
+    source.metafields.edges.length === target.metafields.edges.length &&
+    source.metafields.edges.every((sourceEdge) => {
+      const targetEdge = target.metafields.edges.find(
+        (edge) =>
+          edge.node.namespace === sourceEdge.node.namespace &&
+          edge.node.key === sourceEdge.node.key
+      );
+      return (
+        targetEdge &&
+        targetEdge.node.value === sourceEdge.node.value &&
+        targetEdge.node.type === sourceEdge.node.type
+      );
+    })
+  );
+};
 
 export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
   pages: [],
@@ -127,25 +176,46 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
         direction === 'production_to_staging' ? 'staging' : 'production'
       );
 
-      const sourcePageMap = new Map(
-        sourcePages.map((page) => [page.handle, page])
-      );
-      const targetHandles = new Set(targetPages.map((page) => page.handle));
+      const results: ComparisonResult[] = [];
 
-      const missingPages = sourcePages.filter(
-        (page) => !targetHandles.has(page.handle)
-      );
+      // Only check pages from source to target based on direction
+      sourcePages.forEach((sourcePage) => {
+        const targetPage = targetPages.find(
+          (target) => target.handle === sourcePage.handle
+        );
 
-      const results: ComparisonResult[] = missingPages.map((page) => ({
-        id: page.id,
-        handle: page.handle,
-        title: page.title,
-        status:
-          direction === 'production_to_staging'
-            ? 'missing_in_staging'
-            : 'missing_in_production',
-        updatedAt: page.updatedAt,
-      }));
+        if (!targetPage) {
+          // Page missing in target environment
+          results.push({
+            id: sourcePage.id,
+            handle: sourcePage.handle,
+            title: sourcePage.title,
+            status:
+              direction === 'production_to_staging'
+                ? 'missing_in_staging'
+                : 'missing_in_production',
+            updatedAt: sourcePage.updatedAt,
+          });
+        } else {
+          // Check for basic differences
+          const differences: string[] = [];
+
+          if (sourcePage.title !== targetPage.title) differences.push('title');
+          if (sourcePage.bodySummary !== targetPage.bodySummary)
+            differences.push('bodySummary');
+
+          if (differences.length > 0) {
+            results.push({
+              id: sourcePage.id,
+              handle: sourcePage.handle,
+              title: sourcePage.title,
+              status: 'different',
+              differences,
+              updatedAt: sourcePage.updatedAt,
+            });
+          }
+        }
+      });
 
       set({ comparisonResults: results, isLoading: false });
     } catch (err: any) {
@@ -190,11 +260,13 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
           },
           data: {
             query: `
-              query PageShow($id: ID!) {
+              query PageDetails($id: ID!) {
                 page(id: $id) {
+                  id
                   title
                   handle
                   body
+                  bodySummary
                   isPublished
                   publishedAt
                   templateSuffix
@@ -211,16 +283,14 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
                 }
               }
             `,
-            variables: {
-              id,
-            },
+            variables: { id },
           },
         });
 
-        const pageData = sourceResponse.data.data.page;
+        const sourcePageData = sourceResponse.data.data.page;
 
-        // 2. Create page in target environment
-        const createResponse = await axios({
+        // 2. Check if page exists in target by handle
+        const targetCheckResponse = await axios({
           url: targetUrl,
           method: 'POST',
           headers: {
@@ -229,47 +299,148 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
           },
           data: {
             query: `
-              mutation CreatePage($page: PageCreateInput!) {
-                pageCreate(page: $page) {
-                  page {
-                    id
-                    title
-                    handle
-                  }
-                  userErrors {
-                    code
-                    field
-                    message
+              query GetPages($first: Int!) {
+                pages(first: $first) {
+                  edges {
+                    node {
+                      id
+                      handle
+                      title
+                      body
+                      bodySummary
+                      isPublished
+                      publishedAt
+                      templateSuffix
+                      metafields(first: 25) {
+                        edges {
+                          node {
+                            namespace
+                            key
+                            value
+                            type
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }
             `,
             variables: {
-              page: {
-                title: pageData.title,
-                handle: pageData.handle,
-                body: pageData.body,
-                bodySummary: pageData.bodySummary,
-                isPublished: pageData.isPublished,
-                templateSuffix: pageData.templateSuffix,
-                metafields: pageData.metafields.edges?.map((edge: any) => ({
-                  namespace: edge.node.namespace,
-                  key: edge.node.key,
-                  value: edge.node.value,
-                  type: edge.node.type,
-                })),
-              },
+              first: 250,
             },
           },
         });
 
-        const { userErrors } = createResponse.data.data.pageCreate;
-        if (userErrors && userErrors.length > 0) {
-          throw new Error(
-            `Failed to create page: ${userErrors
-              .map((e: { message: string }) => e.message)
-              .join(', ')}`
+        const existingPage = targetCheckResponse.data.data.pages.edges.find(
+          (edge: any) => edge.node.handle === sourcePageData.handle
+        );
+
+        if (existingPage) {
+          // Compare source and target page details
+          const targetPageData = existingPage.node;
+
+          // Skip if pages are identical
+          if (arePageDetailsEqual(sourcePageData, targetPageData)) {
+            console.log(
+              `Skipping sync for ${sourcePageData.handle} - no changes detected`
+            );
+            continue;
+          }
+
+          // 3a. Update existing page if there are differences
+          await axios({
+            url: targetUrl,
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Shopify-Access-Token': targetToken,
+            },
+            data: {
+              query: `
+                mutation UpdatePage($id: ID!, $input: PageUpdateInput!) {
+                  pageUpdate(id: $id, page: $input) {
+                    page {
+                      id
+                      handle
+                    }
+                    userErrors {
+                      field
+                      message
+                    }
+                  }
+                }
+              `,
+              variables: {
+                id: targetPageData.id,
+                input: {
+                  title: sourcePageData.title,
+                  body: sourcePageData.body,
+                  isPublished: sourcePageData.isPublished,
+                  templateSuffix: sourcePageData.templateSuffix,
+                  metafields: sourcePageData.metafields.edges.map(
+                    (edge: any) => ({
+                      namespace: edge.node.namespace,
+                      key: edge.node.key,
+                      value: edge.node.value,
+                      type: edge.node.type,
+                    })
+                  ),
+                },
+              },
+            },
+          });
+
+          console.log(
+            `Updated page ${sourcePageData.handle} - found differences`
           );
+        } else {
+          // 3b. Create new page if it doesn't exist
+          await axios({
+            url: targetUrl,
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Shopify-Access-Token': targetToken,
+            },
+            data: {
+              query: `
+                mutation CreatePage($page: PageCreateInput!) {
+                  pageCreate(page: $page) {
+                    page {
+                      id
+                      title
+                      handle
+                    }
+                    userErrors {
+                      code
+                      field
+                      message
+                    }
+                  }
+                }
+              `,
+              variables: {
+                page: {
+                  title: sourcePageData.title,
+                  handle: sourcePageData.handle,
+                  body: sourcePageData.body,
+                  isPublished: sourcePageData.isPublished,
+                  templateSuffix: sourcePageData.templateSuffix,
+                  metafields: sourcePageData.metafields.edges.map(
+                    (edge: any) => ({
+                      namespace: edge.node.namespace,
+                      key: edge.node.key,
+                      value: edge.node.value,
+                      type: edge.node.type,
+                    })
+                  ),
+                },
+              },
+            },
+          });
+
+          console.log(`Created new page ${sourcePageData.handle}`);
         }
       }
 

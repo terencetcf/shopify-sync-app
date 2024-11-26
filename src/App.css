@@ -108,3 +108,35 @@ button {
     background-color: #0f0f0f69;
   }
 }
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1f2937; /* Dark gray background matching the theme */
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4b5563; /* Slightly lighter gray for the thumb */
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6b7280; /* Even lighter gray on hover */
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #4b5563 #1f2937;
+}
+
+/* Update the table container styles */
+.comparison-table-container {
+  overflow-x: auto;
+  scrollbar-gutter: stable;
+}

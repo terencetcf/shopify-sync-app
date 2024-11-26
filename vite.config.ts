@@ -31,6 +31,7 @@ export default defineConfig(async () => ({
     proxy: {
       '/shopify': {
         target: 'https://stamm-inc8671.myshopify.com',
+        // target: 'https://shoptest-shakerdoors-co-uk.myshopify.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/shopify/, ''),
       },
