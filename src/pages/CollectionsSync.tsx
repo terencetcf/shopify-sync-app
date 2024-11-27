@@ -4,8 +4,8 @@ import {
   ComparisonTable,
   DirectionSelector,
   SyncButton,
-  ExportButton,
 } from '../components/CollectionsSync';
+import ExportButton from '../components/ExportButton';
 
 export default function CollectionsSync() {
   const {
@@ -192,7 +192,7 @@ export default function CollectionsSync() {
           {hasCompared && comparisonResults.length > 0 && (
             <div className="flex items-center space-x-4">
               <ExportButton
-                onExport={handleExport}
+                onClick={handleExport}
                 disabled={comparisonResults.length === 0}
               />
               <SyncButton

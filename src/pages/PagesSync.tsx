@@ -4,9 +4,9 @@ import {
   ComparisonTable,
   DirectionSelector,
   SyncButton,
-  ExportButton,
 } from '../components/PagesSync';
 import type { CompareDirection } from '../types/sync';
+import ExportButton from '../components/ExportButton';
 
 export default function PagesSync() {
   const [compareDirection, setCompareDirection] = useState<CompareDirection>(
@@ -135,7 +135,7 @@ export default function PagesSync() {
           {hasCompared && comparisonResults.length > 0 && (
             <div className="flex items-center gap-4">
               <ExportButton
-                onExport={handleExport}
+                onClick={handleExport}
                 disabled={comparisonResults.length === 0}
               />
               <SyncButton

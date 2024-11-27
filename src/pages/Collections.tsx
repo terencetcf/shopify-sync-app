@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useCollectionsStore } from '../stores/useCollectionsStore';
 import CollectionDetailsPanel from '../components/CollectionDetails/CollectionDetailsPanel';
 import { formatDate } from '../utils/formatDate';
+import ExportButton from '../components/ExportButton';
 
 export default function Collections() {
   const {
@@ -34,33 +35,27 @@ export default function Collections() {
   };
 
   const handleExport = () => {
-    if (collections.length === 0) return;
-
-    const csvContent = [
-      // CSV Headers
-      ['Title', 'Handle', 'Products Count', 'Last Updated'].join(','),
-      // CSV Data
+    const csv = [
+      ['Handle', 'Title', 'Products Count', 'Last Updated'].join(','),
       ...collections.map((collection) =>
         [
-          `"${collection.title}"`, // Wrap in quotes to handle titles with commas
           collection.handle,
+          collection.title,
           collection.productsCount.count,
-          new Date(collection.updatedAt).toLocaleDateString(),
+          formatDate(collection.updatedAt),
         ].join(',')
       ),
     ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute(
-      'download',
-      `collections-${new Date().toISOString().split('T')[0]}.csv`
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `collections-${new Date().toISOString()}.csv`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   if (error) {
@@ -82,14 +77,7 @@ export default function Collections() {
           </div>
         </div>
         <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={collections.length === 0}
-            className="inline-flex items-center rounded-md bg-gray-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-500 transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Export to CSV
-          </button>
+          <ExportButton onClick={handleExport} />
         </div>
       </div>
 

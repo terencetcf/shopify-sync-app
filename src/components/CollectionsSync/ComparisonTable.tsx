@@ -1,6 +1,5 @@
 import { ComparisonResult } from '../../types/sync';
-import { TableHeader } from './';
-import { TableRow } from './';
+import { TableRow, TableHeader } from './';
 
 interface ComparisonTableProps {
   results: ComparisonResult[];

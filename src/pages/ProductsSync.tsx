@@ -4,9 +4,9 @@ import {
   ComparisonTable,
   DirectionSelector,
   SyncButton,
-  ExportButton,
 } from '../components/ProductsSync';
 import { formatDate } from '../utils/formatDate';
+import ExportButton from '../components/ExportButton';
 
 export default function ProductsSync() {
   const {
@@ -127,7 +127,7 @@ export default function ProductsSync() {
           {hasCompared && comparisonResults.length > 0 && (
             <div className="flex items-center space-x-4">
               <ExportButton
-                onExport={handleExport}
+                onClick={handleExport}
                 disabled={comparisonResults.length === 0}
               />
               <SyncButton

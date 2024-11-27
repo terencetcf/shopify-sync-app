@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useProductsStore } from '../stores/useProductsStore';
 import ProductDetailsPanel from '../components/ProductDetailsPanel';
 import { formatDate } from '../utils/formatDate';
+import ExportButton from '../components/ExportButton';
 
 export default function Products() {
   const { products, isLoading, error, fetchProducts, hasNextPage, endCursor } =
@@ -27,29 +28,28 @@ export default function Products() {
     }
   };
 
-  const exportToCSV = () => {
-    const headers = ['Title', 'Handle', 'Product Type', 'Last Updated'];
-    const csvData = products.map((product) => [
-      product.title,
-      product.handle,
-      product.productType,
-      new Date(product.updatedAt).toLocaleDateString(),
-    ]);
+  const handleExport = () => {
+    const csv = [
+      ['Handle', 'Title', 'Product Type', 'Last Updated'].join(','),
+      ...products.map((product) =>
+        [
+          product.handle,
+          product.title,
+          product.productType,
+          formatDate(product.updatedAt),
+        ].join(',')
+      ),
+    ].join('\n');
 
-    csvData.unshift(headers);
-    const csvString = csvData.map((row) => row.join(',')).join('\n');
-
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `products_${new Date().toISOString()}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `products-${new Date().toISOString()}.csv`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   if (error) {
@@ -72,27 +72,7 @@ export default function Products() {
           </div>
         </div>
         <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-          <button
-            type="button"
-            onClick={exportToCSV}
-            className="inline-flex items-center rounded-md bg-blue-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-          >
-            <svg
-              className="-ml-0.5 mr-2 h-4 w-4"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
-              />
-            </svg>
-            Export to CSV
-          </button>
+          <ExportButton onClick={handleExport} />
         </div>
       </div>
       <div className="mt-8 flow-root">
