@@ -1,4 +1,4 @@
-import { ComparisonResult } from '../../types/products';
+import { ComparisonResult } from '../../types/sync';
 import { formatDate } from '../../utils/formatDate';
 
 interface TableRowProps {

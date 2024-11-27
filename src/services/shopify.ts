@@ -25,7 +25,7 @@ const ENVIRONMENT_CONFIGS: Record<
 };
 
 export const shopifyApi = {
-  async post<T>(
+  async post<T = any>(
     environment: Environment,
     data: ShopifyRequestData
   ): Promise<T> {

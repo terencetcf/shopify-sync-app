@@ -1,9 +1,41 @@
 import { create } from 'zustand';
-import axios from 'axios';
-import type { Product, ComparisonResult } from '../types/products';
-import type { CompareDirection } from '../types/sync';
+import { shopifyApi } from '../services/shopify';
+import { print } from 'graphql';
+import gql from 'graphql-tag';
+import type { Product } from '../types/products';
+import type { CompareDirection, ComparisonResult } from '../types/sync';
 
-const PRODUCTS_QUERY = `
+// Add this interface
+interface ProductsResponse {
+  products: {
+    edges: Array<{
+      node: Product;
+      cursor: string;
+    }>;
+    pageInfo: {
+      hasNextPage: boolean;
+    };
+  };
+}
+
+interface ProductsSyncStore {
+  productionProducts: Product[];
+  stagingProducts: Product[];
+  comparisonResults: ComparisonResult[];
+  isLoading: boolean;
+  error: string | null;
+  compareDirection: CompareDirection;
+  hasCompared: boolean;
+  isStagingToProductionEnabled: boolean;
+  setCompareDirection: (direction: CompareDirection) => void;
+  fetchProducts: () => Promise<void>;
+  resetComparison: () => void;
+  syncProducts: (ids: string[], direction: CompareDirection) => Promise<void>;
+  compareProducts: (direction: CompareDirection) => Promise<void>;
+}
+
+// Define the GraphQL query as a constant
+const SYNC_PRODUCTS_QUERY = gql`
   query {
     products(first: 25) {
       edges {
@@ -18,7 +50,7 @@ const PRODUCTS_QUERY = `
             name
           }
           combinedListingRole
-          collections (first: 250) {
+          collections(first: 250) {
             edges {
               node {
                 handle
@@ -42,7 +74,7 @@ const PRODUCTS_QUERY = `
           }
           status
           tags
-          metafields (first: 250) {
+          metafields(first: 250) {
             edges {
               node {
                 namespace
@@ -66,22 +98,6 @@ const PRODUCTS_QUERY = `
   }
 `;
 
-interface ProductsSyncStore {
-  productionProducts: Product[];
-  stagingProducts: Product[];
-  comparisonResults: ComparisonResult[];
-  isLoading: boolean;
-  error: string | null;
-  compareDirection: CompareDirection;
-  hasCompared: boolean;
-  isStagingToProductionEnabled: boolean;
-  setCompareDirection: (direction: CompareDirection) => void;
-  fetchProducts: () => Promise<void>;
-  resetComparison: () => void;
-  syncProducts: (ids: string[], direction: CompareDirection) => Promise<void>;
-  compareProducts: (direction: CompareDirection) => Promise<void>;
-}
-
 export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
   productionProducts: [],
   stagingProducts: [],
@@ -100,38 +116,26 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
 
     try {
       // Fetch production products
-      const productionResponse = await axios({
-        url: import.meta.env.VITE_SHOPIFY_STORE_URL,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Shopify-Access-Token': import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN,
-        },
-        data: {
-          query: PRODUCTS_QUERY,
-        },
-      });
+      const productionResponse = await shopifyApi.post<ProductsResponse>(
+        'production',
+        {
+          query: print(SYNC_PRODUCTS_QUERY),
+        }
+      );
 
       // Fetch staging products
-      const stagingResponse = await axios({
-        url: import.meta.env.VITE_SHOPIFY_STAGING_STORE_URL,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Shopify-Access-Token': import.meta.env
-            .VITE_SHOPIFY_STAGING_ACCESS_TOKEN,
-        },
-        data: {
-          query: PRODUCTS_QUERY,
-        },
-      });
+      const stagingResponse = await shopifyApi.post<ProductsResponse>(
+        'staging',
+        {
+          query: print(SYNC_PRODUCTS_QUERY),
+        }
+      );
 
-      const productionProducts =
-        productionResponse.data.data.products.edges.map(
-          (edge: { node: Product }) => edge.node
-        );
+      const productionProducts = productionResponse.products.edges.map(
+        (edge: { node: Product }) => edge.node
+      );
 
-      const stagingProducts = stagingResponse.data.data.products.edges.map(
+      const stagingProducts = stagingResponse.products.edges.map(
         (edge: { node: Product }) => edge.node
       );
 
@@ -157,155 +161,123 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
           ? get().productionProducts
           : get().stagingProducts;
 
-      const targetUrl =
-        direction === 'production_to_staging'
-          ? import.meta.env.VITE_SHOPIFY_STAGING_STORE_URL
-          : import.meta.env.VITE_SHOPIFY_STORE_URL;
-
-      const targetToken =
-        direction === 'production_to_staging'
-          ? import.meta.env.VITE_SHOPIFY_STAGING_ACCESS_TOKEN
-          : import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN;
+      const targetEnvironment =
+        direction === 'production_to_staging' ? 'staging' : 'production';
 
       // Process selected products
       for (const id of ids) {
         const sourceProduct = sourceProducts.find((prod) => prod.id === id);
         if (!sourceProduct) continue;
 
-        // First check if product exists in target
-        const targetCheckResponse = await axios({
-          url: targetUrl,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Shopify-Access-Token': targetToken,
-          },
-          data: {
-            query: `
-              query getProductByHandle($handle: String!) {
-                products(first: 1, query: $handle) {
-                  edges {
-                    node {
-                      id
-                      handle
-                    }
+        // Check if product exists in target
+        const targetCheckResponse = await shopifyApi.post(targetEnvironment, {
+          query: print(gql`
+            query getProductByHandle($handle: String!) {
+              products(first: 1, query: $handle) {
+                edges {
+                  node {
+                    id
+                    handle
                   }
                 }
               }
-            `,
-            variables: {
-              handle: `handle:${sourceProduct.handle}`,
-            },
+            }
+          `),
+          variables: {
+            handle: `handle:${sourceProduct.handle}`,
           },
         });
 
-        const existingProduct =
-          targetCheckResponse.data.data.products.edges[0]?.node;
+        const existingProduct = targetCheckResponse.products.edges[0]?.node;
 
         if (existingProduct) {
           // Update existing product
-          await axios({
-            url: targetUrl,
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Shopify-Access-Token': targetToken,
-            },
-            data: {
-              query: `
-                mutation UpdateProductWithNewMedia($input: ProductInput!) {
-                  productUpdate(input: $input) {
-                    product {
-                      id
-                      handle
-                    }
-                    userErrors {
-                      field
-                      message
-                    }
+          await shopifyApi.post(targetEnvironment, {
+            query: print(gql`
+              mutation UpdateProductWithNewMedia($input: ProductInput!) {
+                productUpdate(input: $input) {
+                  product {
+                    id
+                    handle
+                  }
+                  userErrors {
+                    field
+                    message
                   }
                 }
-              `,
-              variables: {
-                input: {
-                  id: existingProduct.id,
-                  handle: sourceProduct.handle,
-                  title: sourceProduct.title,
-                  templateSuffix: sourceProduct.templateSuffix,
-                  vendor: sourceProduct.vendor,
-                  category: sourceProduct.category,
-                  combinedListingRole: sourceProduct.combinedListingRole,
-                  productType: sourceProduct.productType,
-                  requiresSellingPlan: sourceProduct.requiresSellingPlan,
-                  seo: sourceProduct.seo,
-                  status: sourceProduct.status,
-                  tags: sourceProduct.tags,
-                  metafields: sourceProduct.metafields?.edges.map((edge) => ({
-                    namespace: edge.node.namespace,
-                    key: edge.node.key,
-                    value: edge.node.value,
-                    type: edge.node.type,
-                  })),
-                  giftCard: sourceProduct.isGiftCard,
-                  giftCardTemplateSuffix: sourceProduct.giftCardTemplateSuffix,
-                  descriptionHtml: sourceProduct.descriptionHtml,
-                },
+              }
+            `),
+            variables: {
+              input: {
+                id: existingProduct.id,
+                handle: sourceProduct.handle,
+                title: sourceProduct.title,
+                templateSuffix: sourceProduct.templateSuffix,
+                vendor: sourceProduct.vendor,
+                category: sourceProduct.category,
+                combinedListingRole: sourceProduct.combinedListingRole,
+                productType: sourceProduct.productType,
+                requiresSellingPlan: sourceProduct.requiresSellingPlan,
+                seo: sourceProduct.seo,
+                status: sourceProduct.status,
+                tags: sourceProduct.tags,
+                metafields: sourceProduct.metafields?.edges.map((edge) => ({
+                  namespace: edge.node.namespace,
+                  key: edge.node.key,
+                  value: edge.node.value,
+                  type: edge.node.type,
+                })),
+                giftCard: sourceProduct.isGiftCard,
+                giftCardTemplateSuffix: sourceProduct.giftCardTemplateSuffix,
+                descriptionHtml: sourceProduct.descriptionHtml,
               },
             },
           });
         } else {
-          // Create new product if it doesn't exist
-          await axios({
-            url: targetUrl,
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Shopify-Access-Token': targetToken,
-            },
-            data: {
-              query: `
-                mutation createProduct($input: ProductInput!) {
-                  productCreate(input: $input) {
-                    product {
-                      id
-                      handle
-                    }
-                    userErrors {
-                      field
-                      message
-                    }
+          // Create new product
+          await shopifyApi.post(targetEnvironment, {
+            query: print(gql`
+              mutation createProduct($input: ProductInput!) {
+                productCreate(input: $input) {
+                  product {
+                    id
+                    handle
+                  }
+                  userErrors {
+                    field
+                    message
                   }
                 }
-              `,
-              variables: {
-                input: {
-                  handle: sourceProduct.handle,
-                  title: sourceProduct.title,
-                  templateSuffix: sourceProduct.templateSuffix,
-                  vendor: sourceProduct.vendor,
-                  category: sourceProduct.category,
-                  combinedListingRole: sourceProduct.combinedListingRole,
-                  productType: sourceProduct.productType,
-                  productOptions: sourceProduct.options?.map((option) => ({
-                    name: option.name,
-                    position: option.position,
-                    values: option.values.map((value) => ({ name: value })),
-                    linkedMetafield: option.linkedMetafield,
-                  })),
-                  requiresSellingPlan: sourceProduct.requiresSellingPlan,
-                  seo: sourceProduct.seo,
-                  status: sourceProduct.status,
-                  tags: sourceProduct.tags,
-                  metafields: sourceProduct.metafields?.edges.map((edge) => ({
-                    namespace: edge.node.namespace,
-                    key: edge.node.key,
-                    value: edge.node.value,
-                    type: edge.node.type,
-                  })),
-                  giftCard: sourceProduct.isGiftCard,
-                  giftCardTemplateSuffix: sourceProduct.giftCardTemplateSuffix,
-                  descriptionHtml: sourceProduct.descriptionHtml,
-                },
+              }
+            `),
+            variables: {
+              input: {
+                handle: sourceProduct.handle,
+                title: sourceProduct.title,
+                templateSuffix: sourceProduct.templateSuffix,
+                vendor: sourceProduct.vendor,
+                category: sourceProduct.category,
+                combinedListingRole: sourceProduct.combinedListingRole,
+                productType: sourceProduct.productType,
+                productOptions: sourceProduct.options?.map((option) => ({
+                  name: option.name,
+                  position: option.position,
+                  values: option.values.map((value) => ({ name: value })),
+                  linkedMetafield: option.linkedMetafield,
+                })),
+                requiresSellingPlan: sourceProduct.requiresSellingPlan,
+                seo: sourceProduct.seo,
+                status: sourceProduct.status,
+                tags: sourceProduct.tags,
+                metafields: sourceProduct.metafields?.edges.map((edge) => ({
+                  namespace: edge.node.namespace,
+                  key: edge.node.key,
+                  value: edge.node.value,
+                  type: edge.node.type,
+                })),
+                giftCard: sourceProduct.isGiftCard,
+                giftCardTemplateSuffix: sourceProduct.giftCardTemplateSuffix,
+                descriptionHtml: sourceProduct.descriptionHtml,
               },
             },
           });

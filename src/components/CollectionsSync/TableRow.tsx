@@ -1,4 +1,4 @@
-import { ComparisonResult } from '../../types/collections';
+import { ComparisonResult } from '../../types/sync';
 import { formatDate } from '../../utils/formatDate';
 
 interface TableRowProps {
@@ -40,7 +40,7 @@ export default function TableRow({
         </div>
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
-        {result.productionCount?.count || result.stagingCount?.count || '-'}
+        {result.productionCount || result.stagingCount || '-'}
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm">
         <span

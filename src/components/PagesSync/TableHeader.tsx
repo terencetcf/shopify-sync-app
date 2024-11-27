@@ -1,5 +1,3 @@
-import { ComparisonResult } from '../../types/pages';
-
 interface TableHeaderProps {
   selectedCount: number;
   totalCount: number;

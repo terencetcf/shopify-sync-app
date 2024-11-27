@@ -1,14 +1,3 @@
-export interface ComparisonResult {
-  id: string;
-  handle: string;
-  title: string;
-  status: 'missing_in_staging' | 'missing_in_production' | 'different';
-  differences?: string[];
-  updatedAt: string | null;
-  productionInventory?: number | null;
-  stagingInventory?: number | null;
-}
-
 export interface Product {
   id: string;
   title: string;

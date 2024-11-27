@@ -1,7 +1,11 @@
 import { create } from 'zustand';
-import axios from 'axios';
-import type { CompareDirection } from '../types/sync';
-import type { CollectionDetails, ComparisonResult } from '../types/collections';
+import type {
+  CompareDirection,
+  ComparisonResult,
+  Environment,
+} from '../types/sync';
+import type { CollectionDetails } from '../types/collections';
+import { shopifyApi } from '../services/shopify';
 
 interface CollectionsSyncStore {
   productionCollections: CollectionDetails[];
@@ -86,25 +90,8 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
     },
 
     fetchCollectionDetails: async (environment: 'production' | 'staging') => {
-      const apiUrl =
-        environment === 'production'
-          ? import.meta.env.VITE_SHOPIFY_STORE_URL
-          : import.meta.env.VITE_SHOPIFY_STAGING_STORE_URL;
-
-      const accessToken =
-        environment === 'production'
-          ? import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN
-          : import.meta.env.VITE_SHOPIFY_STAGING_ACCESS_TOKEN;
-
-      const response = await axios({
-        url: apiUrl,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Shopify-Access-Token': accessToken,
-        },
-        data: {
-          query: `
+      const response = await shopifyApi.post(environment, {
+        query: `
             query {
               collections(first: 250) {
                 edges {
@@ -130,10 +117,9 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
               }
             }
           `,
-        },
       });
 
-      return response.data.data.collections.edges.map(
+      return response.collections.edges.map(
         (edge: { node: CollectionDetails }) => edge.node
       );
     },
@@ -278,15 +264,8 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
             ? get().stagingCollections
             : get().productionCollections;
 
-        const targetUrl =
-          direction === 'production_to_staging'
-            ? import.meta.env.VITE_SHOPIFY_STAGING_STORE_URL
-            : import.meta.env.VITE_SHOPIFY_STORE_URL;
-
-        const targetToken =
-          direction === 'production_to_staging'
-            ? import.meta.env.VITE_SHOPIFY_STAGING_ACCESS_TOKEN
-            : import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN;
+        const targetEnvironment: Environment =
+          direction === 'production_to_staging' ? 'staging' : 'production';
 
         // Process selected collections
         for (const id of ids) {
@@ -302,15 +281,8 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
 
           if (existingCollection) {
             // Update existing collection
-            await axios({
-              url: targetUrl,
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Shopify-Access-Token': targetToken,
-              },
-              data: {
-                query: `
+            await shopifyApi.post(targetEnvironment, {
+              query: `
                   mutation updateCollection($input: CollectionInput!) {
                     collectionUpdate(input: $input) {
                       collection {
@@ -328,41 +300,33 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
                     }
                   }
                 `,
-                variables: {
-                  input: {
-                    id: existingCollection.id,
-                    title: sourceCollection.title,
-                    descriptionHtml: sourceCollection.descriptionHtml,
-                    sortOrder: sourceCollection.sortOrder,
-                    templateSuffix: sourceCollection.templateSuffix,
-                    image: sourceCollection.image
-                      ? {
-                          id: sourceCollection.image.id,
-                          altText: sourceCollection.image.altText,
-                          src: sourceCollection.image.url,
-                        }
-                      : undefined,
-                    seo: sourceCollection.seo
-                      ? {
-                          title: sourceCollection.seo.title,
-                          description: sourceCollection.seo.description,
-                        }
-                      : undefined,
-                  },
+              variables: {
+                input: {
+                  id: existingCollection.id,
+                  title: sourceCollection.title,
+                  descriptionHtml: sourceCollection.descriptionHtml,
+                  sortOrder: sourceCollection.sortOrder,
+                  templateSuffix: sourceCollection.templateSuffix,
+                  image: sourceCollection.image
+                    ? {
+                        id: sourceCollection.image.id,
+                        altText: sourceCollection.image.altText,
+                        src: sourceCollection.image.url,
+                      }
+                    : undefined,
+                  seo: sourceCollection.seo
+                    ? {
+                        title: sourceCollection.seo.title,
+                        description: sourceCollection.seo.description,
+                      }
+                    : undefined,
                 },
               },
             });
           } else {
             // Create new collection
-            await axios({
-              url: targetUrl,
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Shopify-Access-Token': targetToken,
-              },
-              data: {
-                query: `
+            await shopifyApi.post(targetEnvironment, {
+              query: `
                   mutation CreateCollection($input: CollectionInput!) {
                     collectionCreate(input: $input) {
                       collection {
@@ -380,27 +344,26 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
                     }
                   }
                 `,
-                variables: {
-                  input: {
-                    title: sourceCollection.title,
-                    handle: sourceCollection.handle,
-                    descriptionHtml: sourceCollection.descriptionHtml,
-                    sortOrder: sourceCollection.sortOrder,
-                    templateSuffix: sourceCollection.templateSuffix,
-                    image: sourceCollection.image
-                      ? {
-                          id: sourceCollection.image.id,
-                          altText: sourceCollection.image.altText,
-                          src: sourceCollection.image.url,
-                        }
-                      : undefined,
-                    seo: sourceCollection.seo
-                      ? {
-                          title: sourceCollection.seo.title,
-                          description: sourceCollection.seo.description,
-                        }
-                      : undefined,
-                  },
+              variables: {
+                input: {
+                  title: sourceCollection.title,
+                  handle: sourceCollection.handle,
+                  descriptionHtml: sourceCollection.descriptionHtml,
+                  sortOrder: sourceCollection.sortOrder,
+                  templateSuffix: sourceCollection.templateSuffix,
+                  image: sourceCollection.image
+                    ? {
+                        id: sourceCollection.image.id,
+                        altText: sourceCollection.image.altText,
+                        src: sourceCollection.image.url,
+                      }
+                    : undefined,
+                  seo: sourceCollection.seo
+                    ? {
+                        title: sourceCollection.seo.title,
+                        description: sourceCollection.seo.description,
+                      }
+                    : undefined,
                 },
               },
             });

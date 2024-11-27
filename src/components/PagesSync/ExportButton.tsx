@@ -1,5 +1,3 @@
-import { ComparisonResult } from '../../types/pages';
-
 interface ExportButtonProps {
   onExport: () => void;
   disabled: boolean;

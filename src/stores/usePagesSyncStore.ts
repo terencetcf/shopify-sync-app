@@ -1,6 +1,8 @@
 import { create } from 'zustand';
-import axios from 'axios';
-import type { CompareDirection } from '../types/sync';
+import { shopifyApi } from '../services/shopify';
+import type { CompareDirection, ComparisonResult } from '../types/sync';
+import { print } from 'graphql';
+import gql from 'graphql-tag';
 
 interface Page {
   id: string;
@@ -8,15 +10,6 @@ interface Page {
   handle: string;
   updatedAt: string;
   bodySummary: string;
-}
-
-interface ComparisonResult {
-  id: string;
-  handle: string;
-  title: string;
-  status: 'missing_in_staging' | 'missing_in_production' | 'different';
-  differences?: string[];
-  updatedAt: string | null;
 }
 
 interface PageDetails {
@@ -86,6 +79,117 @@ const arePageDetailsEqual = (
   );
 };
 
+// Define the GraphQL queries as constants
+const PAGES_LIST_QUERY = gql`
+  query PageList($after: String) {
+    pages(first: 50, after: $after) {
+      edges {
+        node {
+          id
+          title
+          handle
+          body
+          bodySummary
+          isPublished
+          publishedAt
+          templateSuffix
+          updatedAt
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+const PAGE_DETAILS_QUERY = gql`
+  query PageDetails($id: ID!) {
+    page(id: $id) {
+      id
+      title
+      handle
+      body
+      bodySummary
+      isPublished
+      publishedAt
+      templateSuffix
+      metafields(first: 25) {
+        edges {
+          node {
+            namespace
+            key
+            value
+            type
+          }
+        }
+      }
+    }
+  }
+`;
+
+const GET_PAGES_QUERY = gql`
+  query GetPages($first: Int!) {
+    pages(first: $first) {
+      edges {
+        node {
+          id
+          handle
+          title
+          body
+          bodySummary
+          isPublished
+          publishedAt
+          templateSuffix
+          metafields(first: 25) {
+            edges {
+              node {
+                namespace
+                key
+                value
+                type
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+const UPDATE_PAGE_MUTATION = gql`
+  mutation UpdatePage($id: ID!, $input: PageUpdateInput!) {
+    pageUpdate(id: $id, page: $input) {
+      page {
+        id
+        handle
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`;
+
+const CREATE_PAGE_MUTATION = gql`
+  mutation CreatePage($page: PageCreateInput!) {
+    pageCreate(page: $page) {
+      page {
+        id
+        title
+        handle
+      }
+      userErrors {
+        code
+        field
+        message
+      }
+    }
+  }
+`;
+
 export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
   pages: [],
   comparisonResults: [],
@@ -97,62 +201,22 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
   fetchPages: async (environment, cursor?: string | null) => {
     set({ isLoading: true, error: null });
 
-    const apiUrl =
-      environment === 'production'
-        ? import.meta.env.VITE_SHOPIFY_STORE_URL
-        : import.meta.env.VITE_SHOPIFY_STAGING_STORE_URL;
-
-    const accessToken =
-      environment === 'production'
-        ? import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN
-        : import.meta.env.VITE_SHOPIFY_STAGING_ACCESS_TOKEN;
-
     try {
-      const { data } = await axios({
-        url: apiUrl,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Shopify-Access-Token': accessToken,
-        },
-        data: {
-          query: `
-            query PageList ($after: String) {
-              pages(first: 50, after: $after) {
-                edges {
-                  node {
-                    id
-                    title
-                    handle
-                    body
-                    bodySummary
-                    isPublished
-                    publishedAt
-                    templateSuffix
-                    updatedAt
-                  }
-                }
-                pageInfo {
-                  hasNextPage
-                  endCursor
-                }
-              }
-            }
-          `,
-          variables: {
-            after: cursor,
-          },
+      const response = await shopifyApi.post(environment, {
+        query: print(PAGES_LIST_QUERY),
+        variables: {
+          after: cursor,
         },
       });
 
-      const pagesData = data.data.pages.edges.map(
+      const pagesData = response.pages.edges.map(
         (edge: { node: Page }) => edge.node
       );
 
       set((state) => ({
         pages: cursor ? [...state.pages, ...pagesData] : pagesData,
-        hasNextPage: data.data.pages.pageInfo.hasNextPage,
-        endCursor: data.data.pages.pageInfo.endCursor,
+        hasNextPage: response.pages.pageInfo.hasNextPage,
+        endCursor: response.pages.pageInfo.endCursor,
         isLoading: false,
       }));
 
@@ -227,112 +291,31 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
   syncPages: async (ids: string[], direction: CompareDirection) => {
     set({ isLoading: true, error: null });
 
-    const sourceUrl =
-      direction === 'production_to_staging'
-        ? import.meta.env.VITE_SHOPIFY_STORE_URL
-        : import.meta.env.VITE_SHOPIFY_STAGING_STORE_URL;
-
-    const targetUrl =
-      direction === 'production_to_staging'
-        ? import.meta.env.VITE_SHOPIFY_STAGING_STORE_URL
-        : import.meta.env.VITE_SHOPIFY_STORE_URL;
-
-    const sourceToken =
-      direction === 'production_to_staging'
-        ? import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN
-        : import.meta.env.VITE_SHOPIFY_STAGING_ACCESS_TOKEN;
-
-    const targetToken =
-      direction === 'production_to_staging'
-        ? import.meta.env.VITE_SHOPIFY_STAGING_ACCESS_TOKEN
-        : import.meta.env.VITE_SHOPIFY_ACCESS_TOKEN;
+    const sourceEnvironment =
+      direction === 'production_to_staging' ? 'production' : 'staging';
+    const targetEnvironment =
+      direction === 'production_to_staging' ? 'staging' : 'production';
 
     try {
       // Process one page at a time
       for (const id of ids) {
         // 1. Fetch full page details from source
-        const sourceResponse = await axios({
-          url: sourceUrl,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Shopify-Access-Token': sourceToken,
-          },
-          data: {
-            query: `
-              query PageDetails($id: ID!) {
-                page(id: $id) {
-                  id
-                  title
-                  handle
-                  body
-                  bodySummary
-                  isPublished
-                  publishedAt
-                  templateSuffix
-                  metafields(first: 25) {
-                    edges {
-                      node {
-                        namespace
-                        key
-                        value
-                        type
-                      }
-                    }
-                  }
-                }
-              }
-            `,
-            variables: { id },
-          },
+        const sourceResponse = await shopifyApi.post(sourceEnvironment, {
+          query: print(PAGE_DETAILS_QUERY),
+          variables: { id },
         });
 
-        const sourcePageData = sourceResponse.data.data.page;
+        const sourcePageData = sourceResponse.page;
 
         // 2. Check if page exists in target by handle
-        const targetCheckResponse = await axios({
-          url: targetUrl,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Shopify-Access-Token': targetToken,
-          },
-          data: {
-            query: `
-              query GetPages($first: Int!) {
-                pages(first: $first) {
-                  edges {
-                    node {
-                      id
-                      handle
-                      title
-                      body
-                      bodySummary
-                      isPublished
-                      publishedAt
-                      templateSuffix
-                      metafields(first: 25) {
-                        edges {
-                          node {
-                            namespace
-                            key
-                            value
-                            type
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            `,
-            variables: {
-              first: 250,
-            },
+        const targetCheckResponse = await shopifyApi.post(targetEnvironment, {
+          query: print(GET_PAGES_QUERY),
+          variables: {
+            first: 250,
           },
         });
 
-        const existingPage = targetCheckResponse.data.data.pages.edges.find(
+        const existingPage = targetCheckResponse.pages.edges.find(
           (edge: any) => edge.node.handle === sourcePageData.handle
         );
 
@@ -349,44 +332,23 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
           }
 
           // 3a. Update existing page if there are differences
-          await axios({
-            url: targetUrl,
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Shopify-Access-Token': targetToken,
-            },
-            data: {
-              query: `
-                mutation UpdatePage($id: ID!, $input: PageUpdateInput!) {
-                  pageUpdate(id: $id, page: $input) {
-                    page {
-                      id
-                      handle
-                    }
-                    userErrors {
-                      field
-                      message
-                    }
-                  }
-                }
-              `,
-              variables: {
-                id: targetPageData.id,
-                input: {
-                  title: sourcePageData.title,
-                  body: sourcePageData.body,
-                  isPublished: sourcePageData.isPublished,
-                  templateSuffix: sourcePageData.templateSuffix,
-                  metafields: sourcePageData.metafields.edges.map(
-                    (edge: any) => ({
-                      namespace: edge.node.namespace,
-                      key: edge.node.key,
-                      value: edge.node.value,
-                      type: edge.node.type,
-                    })
-                  ),
-                },
+          await shopifyApi.post(targetEnvironment, {
+            query: print(UPDATE_PAGE_MUTATION),
+            variables: {
+              id: targetPageData.id,
+              input: {
+                title: sourcePageData.title,
+                body: sourcePageData.body,
+                isPublished: sourcePageData.isPublished,
+                templateSuffix: sourcePageData.templateSuffix,
+                metafields: sourcePageData.metafields.edges.map(
+                  (edge: any) => ({
+                    namespace: edge.node.namespace,
+                    key: edge.node.key,
+                    value: edge.node.value,
+                    type: edge.node.type,
+                  })
+                ),
               },
             },
           });
@@ -396,46 +358,23 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
           );
         } else {
           // 3b. Create new page if it doesn't exist
-          await axios({
-            url: targetUrl,
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Shopify-Access-Token': targetToken,
-            },
-            data: {
-              query: `
-                mutation CreatePage($page: PageCreateInput!) {
-                  pageCreate(page: $page) {
-                    page {
-                      id
-                      title
-                      handle
-                    }
-                    userErrors {
-                      code
-                      field
-                      message
-                    }
-                  }
-                }
-              `,
-              variables: {
-                page: {
-                  title: sourcePageData.title,
-                  handle: sourcePageData.handle,
-                  body: sourcePageData.body,
-                  isPublished: sourcePageData.isPublished,
-                  templateSuffix: sourcePageData.templateSuffix,
-                  metafields: sourcePageData.metafields.edges.map(
-                    (edge: any) => ({
-                      namespace: edge.node.namespace,
-                      key: edge.node.key,
-                      value: edge.node.value,
-                      type: edge.node.type,
-                    })
-                  ),
-                },
+          await shopifyApi.post(targetEnvironment, {
+            query: print(CREATE_PAGE_MUTATION),
+            variables: {
+              page: {
+                title: sourcePageData.title,
+                handle: sourcePageData.handle,
+                body: sourcePageData.body,
+                isPublished: sourcePageData.isPublished,
+                templateSuffix: sourcePageData.templateSuffix,
+                metafields: sourcePageData.metafields.edges.map(
+                  (edge: any) => ({
+                    namespace: edge.node.namespace,
+                    key: edge.node.key,
+                    value: edge.node.value,
+                    type: edge.node.type,
+                  })
+                ),
               },
             },
           });

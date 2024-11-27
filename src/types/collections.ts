@@ -1,28 +1,14 @@
-export interface ComparisonResult {
-  id: string;
-  handle: string;
-  title: string;
-  status: 'missing_in_staging' | 'missing_in_production' | 'different';
-  differences?: string[];
-  updatedAt: string | null;
-  productionCount?: {
-    count: number;
-    precision: number;
-  } | null;
-  stagingCount?: {
-    count: number;
-    precision: number;
-  } | null;
-}
+import type { ComparisonResult } from './sync';
 
 export interface CollectionDetails {
   id: string;
   title: string;
   handle: string;
-  descriptionHtml: string;
   updatedAt: string;
   sortOrder: string;
+  descriptionHtml: string;
   templateSuffix: string | null;
+  productsCount?: number;
   image?: {
     id: string;
     url: string;
@@ -32,8 +18,9 @@ export interface CollectionDetails {
     title: string;
     description: string;
   };
-  productsCount?: {
-    count: number;
-    precision: number;
-  };
+}
+
+export interface CollectionSyncDetails extends ComparisonResult {
+  productionCount?: number | null;
+  stagingCount?: number | null;
 }
