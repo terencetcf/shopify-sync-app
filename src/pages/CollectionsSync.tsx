@@ -8,20 +8,23 @@ import {
 import ExportButton from '../components/ExportButton';
 import { formatDate } from '../utils/formatDate';
 import { downloadCsv } from '../utils/downloadCsv';
+import Notification from '../components/Notification';
 
 export default function CollectionsSync() {
   const {
     error,
     isLoading,
-    comparisonResults,
     setCompareDirection,
     hasCompared,
     compareDirection,
+    comparisonResults,
     compareCollections,
     syncCollections,
   } = useCollectionsSyncStore();
 
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [showExportNotification, setShowExportNotification] = useState(false);
+  const [showSyncNotification, setShowSyncNotification] = useState(false);
 
   const handleSelectAll = () => {
     if (selectedItems.size === comparisonResults.length) {
@@ -32,13 +35,13 @@ export default function CollectionsSync() {
   };
 
   const handleSelectItem = (id: string) => {
-    const newSelected = new Set(selectedItems);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
+    const newSelectedItems = new Set(selectedItems);
+    if (selectedItems.has(id)) {
+      newSelectedItems.delete(id);
     } else {
-      newSelected.add(id);
+      newSelectedItems.add(id);
     }
-    setSelectedItems(newSelected);
+    setSelectedItems(newSelectedItems);
   };
 
   const handleCompare = async () => {
@@ -50,8 +53,9 @@ export default function CollectionsSync() {
     try {
       await syncCollections(Array.from(selectedItems), compareDirection);
       setSelectedItems(new Set());
+      setShowSyncNotification(true);
     } catch (error) {
-      console.error('Error syncing pages:', error);
+      console.error('Error syncing collections:', error);
     }
   };
 
@@ -73,6 +77,8 @@ export default function CollectionsSync() {
       data: csvContent,
       prefix: compareDirection,
     });
+
+    setShowExportNotification(true);
   };
 
   const isSyncDisabled = compareDirection === 'staging_to_production';
@@ -158,6 +164,19 @@ export default function CollectionsSync() {
           </>
         )}
       </div>
+
+      <Notification
+        show={showExportNotification}
+        title="Export successful"
+        message="The collections comparison data has been exported to CSV"
+        onClose={() => setShowExportNotification(false)}
+      />
+      <Notification
+        show={showSyncNotification}
+        title="Sync successful"
+        message="Selected collections have been synced"
+        onClose={() => setShowSyncNotification(false)}
+      />
     </div>
   );
 }

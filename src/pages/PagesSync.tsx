@@ -8,6 +8,7 @@ import {
 import ExportButton from '../components/ExportButton';
 import { formatDate } from '../utils/formatDate';
 import { downloadCsv } from '../utils/downloadCsv';
+import Notification from '../components/Notification';
 
 export default function PagesSync() {
   const {
@@ -22,6 +23,8 @@ export default function PagesSync() {
   } = usePagesSyncStore();
 
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [showExportNotification, setShowExportNotification] = useState(false);
+  const [showSyncNotification, setShowSyncNotification] = useState(false);
 
   const handleSelectAll = () => {
     if (selectedItems.size === comparisonResults.length) {
@@ -50,6 +53,7 @@ export default function PagesSync() {
     try {
       await syncPages(Array.from(selectedItems), compareDirection);
       setSelectedItems(new Set());
+      setShowSyncNotification(true);
     } catch (error) {
       console.error('Error syncing pages:', error);
     }
@@ -73,6 +77,8 @@ export default function PagesSync() {
       data: csvContent,
       prefix: compareDirection,
     });
+
+    setShowExportNotification(true);
   };
 
   const isSyncDisabled = compareDirection === 'staging_to_production';
@@ -156,6 +162,19 @@ export default function PagesSync() {
           </>
         )}
       </div>
+
+      <Notification
+        show={showExportNotification}
+        title="Export successful"
+        message="The pages comparison data has been exported to CSV"
+        onClose={() => setShowExportNotification(false)}
+      />
+      <Notification
+        show={showSyncNotification}
+        title="Sync successful"
+        message="Selected pages have been synced"
+        onClose={() => setShowSyncNotification(false)}
+      />
     </div>
   );
 }

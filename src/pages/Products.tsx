@@ -4,6 +4,7 @@ import ProductDetailsPanel from '../components/ProductDetailsPanel';
 import { formatDate } from '../utils/formatDate';
 import ExportButton from '../components/ExportButton';
 import { downloadCsv } from '../utils/downloadCsv';
+import Notification from '../components/Notification';
 
 export default function Products() {
   const { products, isLoading, error, fetchProducts, hasNextPage, endCursor } =
@@ -13,6 +14,7 @@ export default function Products() {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(
     null
   );
+  const [showNotification, setShowNotification] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -46,6 +48,8 @@ export default function Products() {
       filename: 'products',
       data: csvContent,
     });
+
+    setShowNotification(true);
   };
 
   if (error) {
@@ -184,6 +188,13 @@ export default function Products() {
           setSelectedProductId(null);
         }}
         productId={selectedProductId}
+      />
+
+      <Notification
+        show={showNotification}
+        title="Export successful"
+        message="The products data has been exported to CSV"
+        onClose={() => setShowNotification(false)}
       />
     </div>
   );

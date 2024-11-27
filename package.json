@@ -12,7 +12,9 @@
   "dependencies": {
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
-    "@tauri-apps/api": "^2",
+    "@tauri-apps/api": "^2.1.1",
+    "@tauri-apps/plugin-fs": "~2",
+    "@tauri-apps/plugin-log": "~2",
     "@tauri-apps/plugin-shell": "^2",
     "axios": "^1.7.7",
     "graphql": "^16.9.0",

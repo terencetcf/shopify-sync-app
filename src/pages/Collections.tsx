@@ -4,6 +4,7 @@ import CollectionDetailsPanel from '../components/CollectionDetails/CollectionDe
 import { formatDate } from '../utils/formatDate';
 import ExportButton from '../components/ExportButton';
 import { downloadCsv } from '../utils/downloadCsv';
+import Notification from '../components/Notification';
 
 export default function Collections() {
   const {
@@ -19,6 +20,7 @@ export default function Collections() {
   const [selectedCollectionId, setSelectedCollectionId] = useState<
     string | null
   >(null);
+  const [showNotification, setShowNotification] = useState(false);
 
   useEffect(() => {
     fetchCollections();
@@ -52,6 +54,8 @@ export default function Collections() {
       filename: 'collections',
       data: csvContent,
     });
+
+    setShowNotification(true);
   };
 
   if (error) {
@@ -191,6 +195,13 @@ export default function Collections() {
           setSelectedCollectionId(null);
         }}
         collectionId={selectedCollectionId}
+      />
+
+      <Notification
+        show={showNotification}
+        title="Export successful"
+        message="The collections data has been exported to CSV"
+        onClose={() => setShowNotification(false)}
       />
     </div>
   );

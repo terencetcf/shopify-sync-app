@@ -8,6 +8,7 @@ import {
 import { formatDate } from '../utils/formatDate';
 import ExportButton from '../components/ExportButton';
 import { downloadCsv } from '../utils/downloadCsv';
+import Notification from '../components/Notification';
 
 export default function ProductsSync() {
   const {
@@ -22,6 +23,8 @@ export default function ProductsSync() {
   } = useProductSyncStore();
 
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [showExportNotification, setShowExportNotification] = useState(false);
+  const [showSyncNotification, setShowSyncNotification] = useState(false);
 
   const handleSelectAll = () => {
     if (selectedItems.size === comparisonResults.length) {
@@ -46,11 +49,13 @@ export default function ProductsSync() {
   };
 
   const handleSync = async () => {
+    if (selectedItems.size === 0) return;
     try {
       await syncProducts(Array.from(selectedItems), compareDirection);
       setSelectedItems(new Set());
-    } catch (err) {
-      console.error('Error syncing products:', err);
+      setShowSyncNotification(true);
+    } catch (error) {
+      console.error('Error syncing products:', error);
     }
   };
 
@@ -72,7 +77,10 @@ export default function ProductsSync() {
       data: csvContent,
       prefix: compareDirection,
     });
+
+    setShowExportNotification(true);
   };
+
   const isSyncDisabled = compareDirection === 'staging_to_production';
 
   return (
@@ -156,6 +164,19 @@ export default function ProductsSync() {
           </>
         )}
       </div>
+
+      <Notification
+        show={showExportNotification}
+        title="Export successful"
+        message="The products comparison data has been exported to CSV"
+        onClose={() => setShowExportNotification(false)}
+      />
+      <Notification
+        show={showSyncNotification}
+        title="Sync successful"
+        message="Selected products have been synced"
+        onClose={() => setShowSyncNotification(false)}
+      />
     </div>
   );
 }

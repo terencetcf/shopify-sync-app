@@ -12,9 +12,12 @@
   "app": {
     "windows": [
       {
-        "title": "shopify-sync-app",
-        "width": 800,
-        "height": 600
+        "fullscreen": false,
+        "height": 800,
+        "resizable": true,
+        "title": "Foxstow Shaker Doors | Shopify Sync App",
+        "width": 1200,
+        "maximized": true
       }
     ],
     "security": {
