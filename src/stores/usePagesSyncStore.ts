@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { shopifyApi } from '../services/shopify';
-import type { CompareDirection, ComparisonResult } from '../types/sync';
+import type {
+  CompareDirection,
+  ComparisonResult,
+  Environment,
+} from '../types/sync';
 import { print } from 'graphql';
 import gql from 'graphql-tag';
 
@@ -41,7 +45,7 @@ interface PagesSyncStore {
   hasNextPage: boolean;
   endCursor: string | null;
   fetchPages: (
-    environment: 'production' | 'staging',
+    environment: Environment,
     cursor?: string | null
   ) => Promise<Page[]>;
   comparePages: (direction: CompareDirection) => Promise<void>;

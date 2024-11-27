@@ -22,8 +22,16 @@ export default function Navbar() {
         <div className="flex h-16 justify-between">
           <div className="flex">
             <div className="flex flex-shrink-0 items-center">
-              <Link to="/" className="text-xl font-semibold text-white">
-                Shopify Sync
+              <Link
+                to="/"
+                className="flex items-center text-l font-semibold text-white"
+              >
+                <img
+                  src="/logo.svg"
+                  alt="Foxstow Shaker Doors"
+                  className="h-10 ml-1 mr-4"
+                />
+                Shopify Sync App
               </Link>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">

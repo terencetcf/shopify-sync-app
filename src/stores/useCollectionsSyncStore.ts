@@ -6,6 +6,8 @@ import type {
 } from '../types/sync';
 import type { CollectionDetails } from '../types/collections';
 import { shopifyApi } from '../services/shopify';
+import { print } from 'graphql';
+import gql from 'graphql-tag';
 
 interface CollectionsSyncStore {
   productionCollections: CollectionDetails[];
@@ -21,7 +23,7 @@ interface CollectionsSyncStore {
   setCompareDirection: (direction: CompareDirection) => void;
   fetchCollections: () => Promise<void>;
   fetchCollectionDetails: (
-    environment: 'production' | 'staging'
+    environment: Environment
   ) => Promise<CollectionDetails[]>;
   resetComparison: () => void;
   compareCollections: (direction: CompareDirection) => Promise<void>;
@@ -30,6 +32,71 @@ interface CollectionsSyncStore {
     direction: CompareDirection
   ) => Promise<void>;
 }
+
+const COLLECTIONS_QUERY = gql`
+  query {
+    collections(first: 250) {
+      edges {
+        node {
+          id
+          title
+          handle
+          updatedAt
+          sortOrder
+          descriptionHtml
+          templateSuffix
+          image {
+            id
+            url
+            altText
+          }
+          seo {
+            title
+            description
+          }
+        }
+      }
+    }
+  }
+`;
+
+const UPDATE_COLLECTION_MUTATION = gql`
+  mutation updateCollection($input: CollectionInput!) {
+    collectionUpdate(input: $input) {
+      collection {
+        id
+        title
+        handle
+        image {
+          id
+        }
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`;
+
+const CREATE_COLLECTION_MUTATION = gql`
+  mutation CreateCollection($input: CollectionInput!) {
+    collectionCreate(input: $input) {
+      collection {
+        id
+        title
+        handle
+        image {
+          id
+        }
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`;
 
 export const useCollectionsSyncStore = create<CollectionsSyncStore>(
   (set, get) => ({
@@ -89,34 +156,9 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
       }
     },
 
-    fetchCollectionDetails: async (environment: 'production' | 'staging') => {
+    fetchCollectionDetails: async (environment: Environment) => {
       const response = await shopifyApi.post(environment, {
-        query: `
-            query {
-              collections(first: 250) {
-                edges {
-                  node {
-                    id
-                    title
-                    handle
-                    updatedAt
-                    sortOrder
-                    descriptionHtml
-                    templateSuffix
-                    image {
-                      id
-                      url
-                      altText
-                    }
-                    seo {
-                      title
-                      description
-                    }
-                  }
-                }
-              }
-            }
-          `,
+        query: print(COLLECTIONS_QUERY),
       });
 
       return response.collections.edges.map(
@@ -282,24 +324,7 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
           if (existingCollection) {
             // Update existing collection
             await shopifyApi.post(targetEnvironment, {
-              query: `
-                  mutation updateCollection($input: CollectionInput!) {
-                    collectionUpdate(input: $input) {
-                      collection {
-                        id
-                        title
-                        handle
-                        image {
-                          id
-                        }
-                      }
-                      userErrors {
-                        field
-                        message
-                      }
-                    }
-                  }
-                `,
+              query: print(UPDATE_COLLECTION_MUTATION),
               variables: {
                 input: {
                   id: existingCollection.id,
@@ -326,24 +351,7 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
           } else {
             // Create new collection
             await shopifyApi.post(targetEnvironment, {
-              query: `
-                  mutation CreateCollection($input: CollectionInput!) {
-                    collectionCreate(input: $input) {
-                      collection {
-                        id
-                        title
-                        handle
-                        image {
-                          id
-                        }
-                      }
-                      userErrors {
-                        field
-                        message
-                      }
-                    }
-                  }
-                `,
+              query: print(CREATE_COLLECTION_MUTATION),
               variables: {
                 input: {
                   title: sourceCollection.title,
