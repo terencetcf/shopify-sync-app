@@ -27,20 +27,53 @@ export const PRODUCT_DETAILS_QUERY = gql`
         id
         title
         handle
-        status
-        description
-        descriptionHtml
-        onlineStoreUrl
-        totalInventory
+        templateSuffix
         vendor
-        productType
-        updatedAt
-        options {
+        category {
           id
+          name
+        }
+        combinedListingRole
+        collections(first: 250) {
+          edges {
+            node {
+              handle
+            }
+          }
+        }
+        productType
+        options {
+          linkedMetafield {
+            key
+            namespace
+          }
           name
           position
           values
         }
+        requiresSellingPlan
+        seo {
+          title
+          description
+        }
+        status
+        tags
+        metafields(first: 250) {
+          edges {
+            node {
+              namespace
+              key
+              value
+              type
+            }
+          }
+        }
+        isGiftCard
+        giftCardTemplateSuffix
+        descriptionHtml
+        updatedAt
+        totalInventory
+        onlineStoreUrl
         priceRangeV2 {
           minVariantPrice {
             amount
@@ -51,7 +84,6 @@ export const PRODUCT_DETAILS_QUERY = gql`
             currencyCode
           }
         }
-        tags
         variants(first: 100) {
           edges {
             node {
@@ -75,28 +107,17 @@ export const PRODUCT_DETAILS_QUERY = gql`
             }
           }
         }
-        images(first: 10) {
+        media(first: 250) {
           edges {
             node {
-              id
-              url
-              altText
-              width
-              height
-            }
-          }
-        }
-        seo {
-          title
-          description
-        }
-        metafields(first: 10) {
-          edges {
-            node {
-              id
-              namespace
-              key
-              value
+              mediaContentType
+              status
+              preview {
+                image {
+                  altText
+                  url
+                }
+              }
             }
           }
         }

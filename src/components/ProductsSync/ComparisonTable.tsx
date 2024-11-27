@@ -7,6 +7,7 @@ interface ComparisonTableProps {
   selectedItems: Set<string>;
   onSelectAll: () => void;
   onSelectItem: (id: string) => void;
+  onRowClick: (id: string) => void;
 }
 
 export default function ComparisonTable({
@@ -14,6 +15,7 @@ export default function ComparisonTable({
   selectedItems,
   onSelectAll,
   onSelectItem,
+  onRowClick,
 }: ComparisonTableProps) {
   if (results.length === 0) return null;
 
@@ -34,6 +36,7 @@ export default function ComparisonTable({
                   result={result}
                   isSelected={selectedItems.has(result.id)}
                   onSelect={() => onSelectItem(result.id)}
+                  onClick={() => onRowClick(result.id)}
                 />
               ))}
             </tbody>

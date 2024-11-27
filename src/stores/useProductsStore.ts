@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 import { shopifyApi } from '../services/shopify';
-import { BasicProduct, DetailedProduct } from '../types/product';
+import { BasicProduct } from '../types/product';
 import {
   PRODUCT_DETAILS_QUERY,
   PRODUCTS_QUERY,
 } from '../graphql/queries/products';
 import { print } from 'graphql';
 import { PageInfo } from '../types/pageInfo';
+import { DetailedProduct } from '../types/products';
 
 interface ProductsResponse {
   products: {

@@ -5,15 +5,23 @@ interface TableRowProps {
   result: ComparisonResult;
   isSelected: boolean;
   onSelect: () => void;
+  onClick: () => void;
 }
 
 export default function TableRow({
   result,
   isSelected,
   onSelect,
+  onClick,
 }: TableRowProps) {
   return (
-    <tr key={result.handle} className="hover:bg-gray-700">
+    <tr
+      className="hover:bg-gray-700 cursor-pointer"
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('input[type="checkbox"]')) return;
+        onClick();
+      }}
+    >
       <td className="relative px-7 sm:w-12 sm:px-6">
         <input
           type="checkbox"

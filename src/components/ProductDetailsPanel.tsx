@@ -1,11 +1,11 @@
+import { Fragment, useEffect } from 'react';
 import {
   Dialog,
+  DialogPanel,
   Transition,
   TransitionChild,
-  DialogPanel,
 } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { Fragment, useEffect } from 'react';
 import { useProductsStore } from '../stores/useProductsStore';
 import { formatDate } from '../utils/formatDate';
 
@@ -20,7 +20,7 @@ export default function ProductDetailsPanel({
   onClose,
   productId,
 }: ProductDetailsPanelProps) {
-  const { selectedProduct, isLoadingDetails, fetchProductDetails } =
+  const { selectedProduct, isLoadingDetails, error, fetchProductDetails } =
     useProductsStore();
 
   useEffect(() => {
@@ -78,165 +78,399 @@ export default function ProductDetailsPanel({
                 </div>
 
                 {/* Content */}
-                <div className="relative flex-1 px-4 sm:px-6">
-                  {isLoadingDetails ? (
-                    <div className="flex flex-col items-center justify-center h-full space-y-4">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-                      <p className="text-sm text-gray-400">
-                        Loading product details...
-                      </p>
+                <div className="relative flex-1 px-4 sm:px-6"></div>
+                {isLoadingDetails ? (
+                  <div className="flex-1 px-4 sm:px-6">
+                    <div className="h-full flex items-center justify-center">
+                      <div className="text-gray-400">Loading...</div>
                     </div>
-                  ) : selectedProduct ? (
-                    <div className="space-y-6 pt-6 pb-5">
-                      {/* Title Section */}
-                      <div className="space-y-6 border-b border-gray-700 pb-6">
-                        <h3 className="text-lg font-medium text-gray-200">
-                          {selectedProduct.title}
-                        </h3>
-
-                        <div className="grid grid-cols-1 gap-4">
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-400">
-                              Description
-                            </h4>
-                            <div
-                              className="mt-1 text-sm text-gray-200 prose prose-invert max-w-none"
-                              dangerouslySetInnerHTML={{
-                                __html: selectedProduct.descriptionHtml,
-                              }}
-                            />
-                          </div>
-
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-400">
-                              Status
-                            </h4>
-                            <span
-                              className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium mt-1 ${
-                                selectedProduct.status === 'ACTIVE'
-                                  ? 'bg-green-400/10 text-green-400'
-                                  : 'bg-red-400/10 text-red-400'
-                              }`}
-                            >
-                              {selectedProduct.status.toLowerCase()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Images */}
-                      {selectedProduct.images?.edges.length > 0 && (
-                        <div className="border-b border-gray-700 pb-6">
-                          <h3 className="text-lg font-medium text-gray-200 mb-4">
-                            Images
-                          </h3>
-                          <div className="grid grid-cols-2 gap-4">
-                            {selectedProduct.images.edges.map(({ node }) => (
-                              <div
-                                key={node.id}
-                                className="relative aspect-square"
-                              >
-                                <img
-                                  src={node.url}
-                                  alt={node.altText || selectedProduct.title}
-                                  className="object-cover rounded-lg"
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Pricing */}
+                  </div>
+                ) : error ? (
+                  <div className="flex-1 px-4 sm:px-6">
+                    <div className="h-full flex items-center justify-center">
+                      <div className="text-red-400">{error}</div>
+                    </div>
+                  </div>
+                ) : selectedProduct ? (
+                  <div className="flex-1 px-4 sm:px-6">
+                    <div className="space-y-6">
                       <div className="border-b border-gray-700 pb-6">
-                        <h3 className="text-lg font-medium text-gray-200 mb-4">
-                          Pricing
+                        <dl className="mt-4 space-y-4">
+                          <div>
+                            <dt className="text-sm font-medium text-gray-400">
+                              Title
+                            </dt>
+                            <dd className="mt-1 text-sm text-gray-200">
+                              {selectedProduct.title}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-sm font-medium text-gray-400">
+                              Handle
+                            </dt>
+                            <dd className="mt-1 text-sm text-gray-200">
+                              {selectedProduct.handle}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-sm font-medium text-gray-400">
+                              Status
+                            </dt>
+                            <dd className="mt-1 text-sm text-gray-200">
+                              {selectedProduct.status}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-sm font-medium text-gray-400">
+                              Vendor
+                            </dt>
+                            <dd className="mt-1 text-sm text-gray-200">
+                              {selectedProduct.vendor}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-sm font-medium text-gray-400">
+                              Product Type
+                            </dt>
+                            <dd className="mt-1 text-sm text-gray-200">
+                              {selectedProduct.productType}
+                            </dd>
+                          </div>{' '}
+                          <div>
+                            <dt className="text-sm font-medium text-gray-400">
+                              Last Updated
+                            </dt>
+                            <dd className="mt-1 text-sm text-gray-200">
+                              {formatDate(selectedProduct.updatedAt)}
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
+
+                      {/* Media */}
+                      <div className="border-b border-gray-700 pb-6">
+                        <h3 className="text-lg font-medium text-gray-200">
+                          Media
                         </h3>
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-400">
-                            Price Range
-                          </h4>
-                          <p className="mt-1 text-sm text-gray-200">
-                            {`${selectedProduct.priceRangeV2.minVariantPrice.currencyCode} ${selectedProduct.priceRangeV2.minVariantPrice.amount}`}
-                            {selectedProduct.priceRangeV2.maxVariantPrice
-                              .amount !==
-                              selectedProduct.priceRangeV2.minVariantPrice
-                                .amount &&
-                              ` - ${selectedProduct.priceRangeV2.maxVariantPrice.amount}`}
-                          </p>
+                        <div className="mt-4">
+                          {selectedProduct.media?.edges.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-4">
+                              {selectedProduct.media.edges.map(({ node }) => (
+                                <div
+                                  key={`${node.mediaContentType}-${node.status}`}
+                                  className="relative aspect-square"
+                                >
+                                  {node.preview?.image && (
+                                    <img
+                                      src={node.preview.image.url}
+                                      alt={
+                                        node.preview.image.altText ||
+                                        selectedProduct.title
+                                      }
+                                      className="object-cover rounded-lg"
+                                    />
+                                  )}
+                                  <div className="absolute top-2 right-2">
+                                    <span className="inline-flex items-center rounded-md bg-gray-700/70 px-2 py-1 text-xs font-medium text-gray-200">
+                                      {node.mediaContentType}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-400">No media</p>
+                          )}
                         </div>
                       </div>
 
-                      {/* Additional Details */}
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-200 mb-4">
-                          Additional Details
+                      {/* Collections */}
+                      <div className="border-b border-gray-700 pb-6">
+                        <h3 className="text-lg font-medium text-gray-200">
+                          Collections
                         </h3>
-                        <div className="grid grid-cols-1 gap-4">
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-400">
-                              Handle
-                            </h4>
-                            <p className="mt-1 text-sm text-gray-200">
-                              {selectedProduct.handle}
-                            </p>
-                          </div>
-
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-400">
-                              Vendor
-                            </h4>
-                            <p className="mt-1 text-sm text-gray-200">
-                              {selectedProduct.vendor}
-                            </p>
-                          </div>
-
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-400">
-                              Product Type
-                            </h4>
-                            <p className="mt-1 text-sm text-gray-200">
-                              {selectedProduct.productType}
-                            </p>
-                          </div>
-
-                          {selectedProduct.tags?.length > 0 && (
-                            <div>
-                              <h4 className="text-sm font-medium text-gray-400">
-                                Tags
-                              </h4>
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                {selectedProduct.tags.map((tag, index) => (
-                                  <span
-                                    key={index}
-                                    className="inline-flex items-center rounded-md bg-gray-700 px-2 py-1 text-xs font-medium text-gray-200"
+                        <div className="mt-4">
+                          {selectedProduct.collections.edges.length > 0 ? (
+                            <ul className="space-y-2">
+                              {selectedProduct.collections.edges.map(
+                                ({ node }) => (
+                                  <li
+                                    key={node.handle}
+                                    className="text-sm text-gray-300"
                                   >
-                                    {tag}
-                                  </span>
-                                ))}
-                              </div>
+                                    {node.handle}
+                                  </li>
+                                )
+                              )}
+                            </ul>
+                          ) : (
+                            <p className="text-sm text-gray-400">
+                              No collections
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Tags */}
+                      <div className="border-b border-gray-700 pb-6">
+                        <h3 className="text-lg font-medium text-gray-200">
+                          Tags
+                        </h3>
+                        <div className="mt-4">
+                          {selectedProduct.tags?.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {selectedProduct.tags.map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="inline-flex items-center rounded-md bg-gray-700 px-2 py-1 text-xs font-medium text-gray-200"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-400">No tags</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Category & Role */}
+                      <div className="border-b border-gray-700 pb-6">
+                        <h3 className="text-lg font-medium text-gray-200">
+                          Category & Role
+                        </h3>
+                        <dl className="mt-4 space-y-4">
+                          <div>
+                            <dt className="text-sm font-medium text-gray-400">
+                              Category
+                            </dt>
+                            <dd className="mt-1 text-sm text-gray-200">
+                              {selectedProduct.category?.name || 'None'}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-sm font-medium text-gray-400">
+                              Combined Listing Role
+                            </dt>
+                            <dd className="mt-1 text-sm text-gray-200">
+                              {selectedProduct.combinedListingRole}
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
+
+                      {/* Product Options */}
+                      <div className="border-b border-gray-700 pb-6">
+                        <h3 className="text-lg font-medium text-gray-200">
+                          Options
+                        </h3>
+                        <div className="mt-4">
+                          {selectedProduct.options?.length > 0 ? (
+                            <div className="space-y-4">
+                              {selectedProduct.options.map((option) => (
+                                <div key={option.name}>
+                                  <h4 className="text-sm font-medium text-gray-300">
+                                    {option.name}
+                                  </h4>
+                                  <div className="mt-2 space-y-2">
+                                    <div className="text-sm text-gray-400">
+                                      Position: {option.position}
+                                    </div>
+                                    <div className="text-sm text-gray-400">
+                                      Values: {option.values.join(', ')}
+                                    </div>
+                                    {option.linkedMetafield && (
+                                      <div className="text-sm text-gray-400">
+                                        Linked Metafield:{' '}
+                                        {option.linkedMetafield.namespace}.
+                                        {option.linkedMetafield.key}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-400">No options</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* SEO */}
+                      <div className="border-b border-gray-700 pb-6">
+                        <h3 className="text-lg font-medium text-gray-200">
+                          SEO
+                        </h3>
+                        <dl className="mt-4 space-y-4">
+                          <div>
+                            <dt className="text-sm font-medium text-gray-400">
+                              Title
+                            </dt>
+                            <dd className="mt-1 text-sm text-gray-200">
+                              {selectedProduct.seo?.title || 'None'}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-sm font-medium text-gray-400">
+                              Description
+                            </dt>
+                            <dd className="mt-1 text-sm text-gray-200">
+                              {selectedProduct.seo?.description || 'None'}
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
+
+                      {/* Metafields */}
+                      <div className="border-b border-gray-700 pb-6">
+                        <h3 className="text-lg font-medium text-gray-200">
+                          Metafields
+                        </h3>
+                        <div className="mt-4">
+                          {selectedProduct.metafields?.edges.length > 0 ? (
+                            <div className="space-y-4">
+                              {selectedProduct.metafields.edges.map(
+                                ({ node }) => (
+                                  <div key={`${node.namespace}.${node.key}`}>
+                                    <h4 className="text-sm font-medium text-gray-300">
+                                      {node.namespace}.{node.key}
+                                    </h4>
+                                    <div className="mt-1 text-sm text-gray-400">
+                                      Type: {node.type}
+                                    </div>
+                                    <div className="mt-1 text-sm text-gray-400">
+                                      Value: {node.value}
+                                    </div>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-400">
+                              No metafields
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Gift Card Settings */}
+                      <div className="border-b border-gray-700 pb-6">
+                        <h3 className="text-lg font-medium text-gray-200">
+                          Gift Card Settings
+                        </h3>
+                        <dl className="mt-4 space-y-4">
+                          <div>
+                            <dt className="text-sm font-medium text-gray-400">
+                              Is Gift Card
+                            </dt>
+                            <dd className="mt-1 text-sm text-gray-200">
+                              {selectedProduct.isGiftCard ? 'Yes' : 'No'}
+                            </dd>
+                          </div>
+                          {selectedProduct.isGiftCard && (
+                            <div>
+                              <dt className="text-sm font-medium text-gray-400">
+                                Template Suffix
+                              </dt>
+                              <dd className="mt-1 text-sm text-gray-200">
+                                {selectedProduct.giftCardTemplateSuffix ||
+                                  'None'}
+                              </dd>
                             </div>
                           )}
+                        </dl>
+                      </div>
 
+                      {/* Template Settings */}
+                      <div className="border-b border-gray-700 pb-6">
+                        <h3 className="text-lg font-medium text-gray-200">
+                          Template Settings
+                        </h3>
+                        <dl className="mt-4 space-y-4">
                           <div>
-                            <h4 className="text-sm font-medium text-gray-400">
-                              Last Updated
-                            </h4>
-                            <p className="mt-1 text-sm text-gray-200">
-                              {formatDate(selectedProduct.updatedAt)}
-                            </p>
+                            <dt className="text-sm font-medium text-gray-400">
+                              Template Suffix
+                            </dt>
+                            <dd className="mt-1 text-sm text-gray-200">
+                              {selectedProduct.templateSuffix || 'None'}
+                            </dd>
                           </div>
+                          <div>
+                            <dt className="text-sm font-medium text-gray-400">
+                              Requires Selling Plan
+                            </dt>
+                            <dd className="mt-1 text-sm text-gray-200">
+                              {selectedProduct.requiresSellingPlan
+                                ? 'Yes'
+                                : 'No'}
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
+
+                      {/* Variants */}
+                      <div className="border-b border-gray-700 pb-6">
+                        <h3 className="text-lg font-medium text-gray-200">
+                          Variants
+                        </h3>
+                        <div className="mt-4">
+                          {selectedProduct.variants?.edges.length > 0 ? (
+                            <div className="space-y-4">
+                              {selectedProduct.variants.edges.map(
+                                ({ node }) => (
+                                  <div
+                                    key={node.id}
+                                    className="border-l-2 border-gray-700 pl-4"
+                                  >
+                                    <h4 className="text-sm font-medium text-gray-300">
+                                      {node.title}
+                                    </h4>
+                                    <dl className="mt-2 space-y-2">
+                                      <div>
+                                        <dt className="text-sm font-medium text-gray-400">
+                                          SKU
+                                        </dt>
+                                        <dd className="mt-1 text-sm text-gray-200">
+                                          {node.sku}
+                                        </dd>
+                                      </div>
+                                      <div>
+                                        <dt className="text-sm font-medium text-gray-400">
+                                          Price
+                                        </dt>
+                                        <dd className="mt-1 text-sm text-gray-200">
+                                          {node.price}
+                                        </dd>
+                                      </div>
+                                      <div>
+                                        <dt className="text-sm font-medium text-gray-400">
+                                          Compare At Price
+                                        </dt>
+                                        <dd className="mt-1 text-sm text-gray-200">
+                                          {node.compareAtPrice || 'None'}
+                                        </dd>
+                                      </div>
+                                      <div>
+                                        <dt className="text-sm font-medium text-gray-400">
+                                          Inventory
+                                        </dt>
+                                        <dd className="mt-1 text-sm text-gray-200">
+                                          {node.inventoryQuantity}
+                                        </dd>
+                                      </div>
+                                    </dl>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-400">No variants</p>
+                          )}
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <p className="text-sm text-gray-400">
-                        No product details available
-                      </p>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                ) : null}
               </div>
             </DialogPanel>
           </TransitionChild>

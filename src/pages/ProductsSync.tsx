@@ -9,6 +9,7 @@ import { formatDate } from '../utils/formatDate';
 import ExportButton from '../components/ExportButton';
 import { downloadCsv } from '../utils/downloadCsv';
 import Notification from '../components/Notification';
+import ProductDetailsPanel from '../components/ProductDetailsPanel';
 
 export default function ProductsSync() {
   const {
@@ -25,6 +26,10 @@ export default function ProductsSync() {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [showExportNotification, setShowExportNotification] = useState(false);
   const [showSyncNotification, setShowSyncNotification] = useState(false);
+  const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(
+    null
+  );
 
   const handleSelectAll = () => {
     if (selectedItems.size === comparisonResults.length) {
@@ -79,6 +84,11 @@ export default function ProductsSync() {
     });
 
     setShowExportNotification(true);
+  };
+
+  const handleProductClick = (id: string) => {
+    setSelectedProductId(id);
+    setIsDetailsPanelOpen(true);
   };
 
   const isSyncDisabled = compareDirection === 'staging_to_production';
@@ -151,6 +161,7 @@ export default function ProductsSync() {
                 selectedItems={selectedItems}
                 onSelectAll={handleSelectAll}
                 onSelectItem={handleSelectItem}
+                onRowClick={handleProductClick}
               />
             ) : (
               <div className="text-center text-gray-400 py-8">
@@ -164,6 +175,15 @@ export default function ProductsSync() {
           </>
         )}
       </div>
+
+      <ProductDetailsPanel
+        isOpen={isDetailsPanelOpen}
+        onClose={() => {
+          setIsDetailsPanelOpen(false);
+          setSelectedProductId(null);
+        }}
+        productId={selectedProductId}
+      />
 
       <Notification
         show={showExportNotification}

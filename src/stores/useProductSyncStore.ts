@@ -54,7 +54,7 @@ interface ProductsSyncStore {
   compareProducts: (direction: CompareDirection) => Promise<void>;
 }
 
-const SYNC_PRODUCTS_QUERY = gql`
+const GET_PRODUCTS_QUERY = gql`
   query {
     products(first: 25) {
       edges {
@@ -107,6 +107,20 @@ const SYNC_PRODUCTS_QUERY = gql`
           giftCardTemplateSuffix
           descriptionHtml
           updatedAt
+          media(first: 250) {
+            edges {
+              node {
+                mediaContentType
+                status
+                preview {
+                  image {
+                    altText
+                    url
+                  }
+                }
+              }
+            }
+          }
         }
         cursor
       }
@@ -138,8 +152,8 @@ const GET_COLLECTIONS_QUERY = gql`
 
 // Update the mutations to include collections
 const UPDATE_PRODUCT_MUTATION = gql`
-  mutation updateProduct($input: ProductInput!) {
-    productUpdate(input: $input) {
+  mutation updateProduct($input: ProductInput!, $media: [CreateMediaInput!]) {
+    productUpdate(input: $input, media: $media) {
       product {
         id
         handle
@@ -153,8 +167,8 @@ const UPDATE_PRODUCT_MUTATION = gql`
 `;
 
 const CREATE_PRODUCT_MUTATION = gql`
-  mutation createProduct($input: ProductInput!) {
-    productCreate(input: $input) {
+  mutation createProduct($input: ProductInput!, $media: [CreateMediaInput!]) {
+    productCreate(input: $input, media: $media) {
       product {
         id
         handle
@@ -230,7 +244,7 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
       const productionResponse = await shopifyApi.post<ProductsResponse>(
         'production',
         {
-          query: print(SYNC_PRODUCTS_QUERY),
+          query: print(GET_PRODUCTS_QUERY),
         }
       );
 
@@ -238,7 +252,7 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
       const stagingResponse = await shopifyApi.post<ProductsResponse>(
         'staging',
         {
-          query: print(SYNC_PRODUCTS_QUERY),
+          query: print(GET_PRODUCTS_QUERY),
         }
       );
 
@@ -341,6 +355,11 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
           descriptionHtml: sourceProduct.descriptionHtml,
           collectionsToJoin: collectionIds,
         };
+        // const mediaInput = sourceProduct.media.edges.map(({ node }) => ({
+        //   alt: node.preview.image.altText || '',
+        //   mediaContentType: node.mediaContentType,
+        //   originalSource: node.preview.image.url,
+        // }));
 
         if (existingProduct) {
           await shopifyApi.post(targetEnvironment, {
@@ -350,15 +369,15 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
                 id: existingProduct.id,
                 ...productInput,
               },
+              // media: mediaInput,
             },
           });
         } else {
           await shopifyApi.post(targetEnvironment, {
             query: print(CREATE_PRODUCT_MUTATION),
             variables: {
-              input: {
-                ...productInput,
-              },
+              input: productInput,
+              // media: mediaInput,
             },
           });
         }
