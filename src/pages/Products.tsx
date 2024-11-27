@@ -3,6 +3,7 @@ import { useProductsStore } from '../stores/useProductsStore';
 import ProductDetailsPanel from '../components/ProductDetailsPanel';
 import { formatDate } from '../utils/formatDate';
 import ExportButton from '../components/ExportButton';
+import { downloadCsv } from '../utils/downloadCsv';
 
 export default function Products() {
   const { products, isLoading, error, fetchProducts, hasNextPage, endCursor } =
@@ -29,27 +30,22 @@ export default function Products() {
   };
 
   const handleExport = () => {
-    const csv = [
-      ['Handle', 'Title', 'Product Type', 'Last Updated'].join(','),
-      ...products.map((product) =>
-        [
-          product.handle,
-          product.title,
-          product.productType,
-          formatDate(product.updatedAt),
-        ].join(',')
-      ),
-    ].join('\n');
+    const csvContent = [
+      ['Handle', 'Title', 'Product Type', 'Last Updated'],
+      ...products.map((product) => [
+        product.handle,
+        product.title,
+        product.productType,
+        formatDate(product.updatedAt),
+      ]),
+    ]
+      .map((row) => row.join(','))
+      .join('\n');
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('hidden', '');
-    a.setAttribute('href', url);
-    a.setAttribute('download', `products-${new Date().toISOString()}.csv`);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    downloadCsv({
+      filename: 'products',
+      data: csvContent,
+    });
   };
 
   if (error) {

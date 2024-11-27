@@ -3,6 +3,7 @@ import { useCollectionsStore } from '../stores/useCollectionsStore';
 import CollectionDetailsPanel from '../components/CollectionDetails/CollectionDetailsPanel';
 import { formatDate } from '../utils/formatDate';
 import ExportButton from '../components/ExportButton';
+import { downloadCsv } from '../utils/downloadCsv';
 
 export default function Collections() {
   const {
@@ -35,27 +36,22 @@ export default function Collections() {
   };
 
   const handleExport = () => {
-    const csv = [
-      ['Handle', 'Title', 'Products Count', 'Last Updated'].join(','),
-      ...collections.map((collection) =>
-        [
-          collection.handle,
-          collection.title,
-          collection.productsCount.count,
-          formatDate(collection.updatedAt),
-        ].join(',')
-      ),
-    ].join('\n');
+    const csvContent = [
+      ['Handle', 'Title', 'Products Count', 'Last Updated'],
+      ...collections.map((collection) => [
+        collection.handle,
+        collection.title,
+        collection.productsCount.count,
+        formatDate(collection.updatedAt),
+      ]),
+    ]
+      .map((row) => row.join(','))
+      .join('\n');
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('hidden', '');
-    a.setAttribute('href', url);
-    a.setAttribute('download', `collections-${new Date().toISOString()}.csv`);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    downloadCsv({
+      filename: 'collections',
+      data: csvContent,
+    });
   };
 
   if (error) {

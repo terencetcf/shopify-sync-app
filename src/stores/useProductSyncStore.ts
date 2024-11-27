@@ -26,7 +26,7 @@ interface ProductsSyncStore {
   error: string | null;
   compareDirection: CompareDirection;
   hasCompared: boolean;
-  isStagingToProductionEnabled: boolean;
+  resultsDirection: CompareDirection | null;
   setCompareDirection: (direction: CompareDirection) => void;
   fetchProducts: () => Promise<void>;
   resetComparison: () => void;
@@ -106,10 +106,24 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
   error: null,
   compareDirection: 'production_to_staging',
   hasCompared: false,
-  isStagingToProductionEnabled: false,
+  resultsDirection: null,
 
-  setCompareDirection: (direction) => set({ compareDirection: direction }),
-  resetComparison: () => set({ hasCompared: false }),
+  setCompareDirection: (direction) => {
+    set({
+      compareDirection: direction,
+      comparisonResults:
+        get().resultsDirection === direction ? get().comparisonResults : [],
+      hasCompared:
+        get().resultsDirection === direction ? get().hasCompared : false,
+    });
+  },
+
+  resetComparison: () =>
+    set({
+      hasCompared: false,
+      comparisonResults: [],
+      resultsDirection: null,
+    }),
 
   fetchProducts: async () => {
     set({ isLoading: true, error: null });
@@ -430,9 +444,14 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
         comparisonResults: results,
         isLoading: false,
         hasCompared: true,
+        resultsDirection: direction,
       });
     } catch (err: any) {
-      set({ error: 'Failed to compare products', isLoading: false });
+      set({
+        error: 'Failed to compare products',
+        isLoading: false,
+        resultsDirection: null,
+      });
       console.error('Error comparing products:', err);
     }
   },

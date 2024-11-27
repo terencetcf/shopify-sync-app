@@ -14,12 +14,10 @@ interface CollectionsSyncStore {
   stagingCollections: CollectionDetails[];
   comparisonResults: ComparisonResult[];
   isLoading: boolean;
-  isLoadingProduction: boolean;
-  isLoadingStaging: boolean;
   error: string | null;
   compareDirection: CompareDirection;
   hasCompared: boolean;
-  isStagingToProductionEnabled: boolean;
+  resultsDirection: CompareDirection | null;
   setCompareDirection: (direction: CompareDirection) => void;
   fetchCollections: () => Promise<void>;
   fetchCollectionDetails: (
@@ -104,34 +102,35 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
     stagingCollections: [],
     comparisonResults: [],
     isLoading: false,
-    isLoadingProduction: false,
-    isLoadingStaging: false,
     error: null,
     compareDirection: 'production_to_staging',
     hasCompared: false,
-    isStagingToProductionEnabled: false,
+    resultsDirection: null,
 
-    setCompareDirection: (direction) => set({ compareDirection: direction }),
+    setCompareDirection: (direction) => {
+      set({
+        compareDirection: direction,
+        comparisonResults:
+          get().resultsDirection === direction ? get().comparisonResults : [],
+        hasCompared:
+          get().resultsDirection === direction ? get().hasCompared : false,
+      });
+    },
 
     resetComparison: () =>
       set({
         hasCompared: false,
         comparisonResults: [],
+        resultsDirection: null,
       }),
 
     fetchCollections: async () => {
-      set({
-        isLoadingProduction: true,
-        isLoadingStaging: true,
-        error: null,
-      });
+      set({ isLoading: true, error: null });
 
       try {
-        // Fetch production collections
         const productionCollections = await get().fetchCollectionDetails(
           'production'
         );
-        // Fetch staging collections
         const stagingCollections = await get().fetchCollectionDetails(
           'staging'
         );
@@ -139,19 +138,14 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
         set({
           productionCollections,
           stagingCollections,
-          isLoadingProduction: false,
-          isLoadingStaging: false,
+          isLoading: false,
           hasCompared: true,
         });
       } catch (err: any) {
         const errorMessage =
           err.response?.data?.errors?.[0]?.message ||
           'Failed to fetch collections';
-        set({
-          error: errorMessage,
-          isLoadingProduction: false,
-          isLoadingStaging: false,
-        });
+        set({ error: errorMessage, isLoading: false });
         console.error('Error fetching collections:', err);
       }
     },
@@ -286,9 +280,14 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
           comparisonResults: results,
           isLoading: false,
           hasCompared: true,
+          resultsDirection: direction,
         });
       } catch (err: any) {
-        set({ error: 'Failed to compare collections', isLoading: false });
+        set({
+          error: 'Failed to compare collections',
+          isLoading: false,
+          resultsDirection: null,
+        });
         console.error('Error comparing collections:', err);
       }
     },

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useProductSyncStore } from '../stores/useProductSyncStore';
 import {
   ComparisonTable,
@@ -7,42 +7,21 @@ import {
 } from '../components/ProductsSync';
 import { formatDate } from '../utils/formatDate';
 import ExportButton from '../components/ExportButton';
+import { downloadCsv } from '../utils/downloadCsv';
 
 export default function ProductsSync() {
   const {
-    comparisonResults,
-    isLoading,
     error,
-    compareDirection,
-    hasCompared,
-    isStagingToProductionEnabled,
+    isLoading,
     setCompareDirection,
+    hasCompared,
+    compareDirection,
+    comparisonResults,
     compareProducts,
     syncProducts,
-    resetComparison,
   } = useProductSyncStore();
 
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-
-  // Reset selected items when direction changes
-  useEffect(() => {
-    setSelectedItems(new Set());
-    resetComparison();
-  }, [compareDirection, resetComparison]);
-
-  const handleCompare = async () => {
-    setSelectedItems(new Set());
-    await compareProducts(compareDirection);
-  };
-
-  const handleSync = async () => {
-    try {
-      await syncProducts(Array.from(selectedItems), compareDirection);
-      setSelectedItems(new Set());
-    } catch (err) {
-      console.error('Error syncing products:', err);
-    }
-  };
 
   const handleSelectAll = () => {
     if (selectedItems.size === comparisonResults.length) {
@@ -62,36 +41,39 @@ export default function ProductsSync() {
     setSelectedItems(newSelectedItems);
   };
 
-  const handleExport = () => {
-    const csvContent = [
-      ['Title', 'Handle', 'Status', 'Last Updated'].join(','),
-      ...comparisonResults.map((result) =>
-        [
-          `"${result.title}"`,
-          result.handle,
-          result.status === 'different'
-            ? `Different (${result.differences?.join(', ')})`
-            : result.status === 'missing_in_staging'
-            ? 'Missing in Staging'
-            : 'Missing in Production',
-          formatDate(result.updatedAt),
-        ].join(',')
-      ),
-    ].join('\n');
-
-    // Create and trigger download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `products_comparison_${new Date()
-      .toISOString()
-      .slice(0, 10)}.csv`;
-    link.click();
+  const handleCompare = async () => {
+    await compareProducts(compareDirection);
   };
 
-  const isSyncDisabled =
-    compareDirection === 'staging_to_production' &&
-    !isStagingToProductionEnabled;
+  const handleSync = async () => {
+    try {
+      await syncProducts(Array.from(selectedItems), compareDirection);
+      setSelectedItems(new Set());
+    } catch (err) {
+      console.error('Error syncing products:', err);
+    }
+  };
+
+  const handleExport = () => {
+    const csvContent = [
+      ['Handle', 'Title', 'Status', 'Last Updated'],
+      ...comparisonResults.map((result) => [
+        result.handle,
+        result.title,
+        result.status,
+        formatDate(result.updatedAt),
+      ]),
+    ]
+      .map((row) => row.join(','))
+      .join('\n');
+
+    downloadCsv({
+      filename: 'products-comparison',
+      data: csvContent,
+      prefix: compareDirection,
+    });
+  };
+  const isSyncDisabled = compareDirection === 'staging_to_production';
 
   return (
     <div className="px-4 sm:px-6 lg:px-8">
@@ -113,7 +95,7 @@ export default function ProductsSync() {
             <DirectionSelector
               value={compareDirection}
               onChange={setCompareDirection}
-              isStagingToProductionEnabled={isStagingToProductionEnabled}
+              isStagingToProductionEnabled={false}
             />
             <button
               onClick={handleCompare}

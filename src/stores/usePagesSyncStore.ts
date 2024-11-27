@@ -44,16 +44,17 @@ interface PagesSyncStore {
   error: string | null;
   hasNextPage: boolean;
   endCursor: string | null;
+  compareDirection: CompareDirection;
+  hasCompared: boolean;
+  resultsDirection: CompareDirection | null;
   fetchPages: (
     environment: Environment,
     cursor?: string | null
   ) => Promise<Page[]>;
   comparePages: (direction: CompareDirection) => Promise<void>;
   syncPages: (handles: string[], direction: CompareDirection) => Promise<void>;
-  exportComparison: (
-    results: ComparisonResult[],
-    direction: CompareDirection
-  ) => void;
+  setCompareDirection: (direction: CompareDirection) => void;
+  resetComparison: () => void;
 }
 
 const arePageDetailsEqual = (
@@ -201,6 +202,9 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
   error: null,
   hasNextPage: false,
   endCursor: null,
+  compareDirection: 'production_to_staging',
+  hasCompared: false,
+  resultsDirection: null,
 
   fetchPages: async (environment, cursor?: string | null) => {
     set({ isLoading: true, error: null });
@@ -285,9 +289,18 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
         }
       });
 
-      set({ comparisonResults: results, isLoading: false });
+      set({
+        comparisonResults: results,
+        isLoading: false,
+        hasCompared: true,
+        resultsDirection: direction,
+      });
     } catch (err: any) {
-      set({ error: 'Failed to compare pages', isLoading: false });
+      set({
+        error: 'Failed to compare pages',
+        isLoading: false,
+        resultsDirection: null,
+      });
       console.error('Error comparing pages:', err);
     }
   },
@@ -385,6 +398,12 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
 
           console.log(`Created new page ${sourcePageData.handle}`);
         }
+
+        set((state) => ({
+          comparisonResults: state.comparisonResults.filter(
+            (result) => result.id !== id
+          ),
+        }));
       }
 
       set({ isLoading: false });
@@ -399,32 +418,23 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
     }
   },
 
-  exportComparison: (
-    results: ComparisonResult[],
-    direction: CompareDirection
-  ) => {
-    const csvContent = [
-      ['Handle', 'Title', 'Status', 'Last Updated'],
-      ...results.map((result) => [
-        result.handle,
-        result.title,
-        direction === 'production_to_staging'
-          ? 'Missing in Staging'
-          : 'Missing in Production',
-        result.updatedAt
-          ? new Date(result.updatedAt).toLocaleDateString()
-          : '-',
-      ]),
-    ]
-      .map((row) => row.join(','))
-      .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `pages-comparison-${
-      new Date().toISOString().split('T')[0]
-    }.csv`;
-    link.click();
+  setCompareDirection: (direction) => {
+    console.log('🚀 - direction:', direction);
+    set({
+      compareDirection: direction,
+      comparisonResults:
+        get().resultsDirection === direction ? get().comparisonResults : [],
+      hasCompared:
+        get().resultsDirection === direction ? get().hasCompared : false,
+      resultsDirection:
+        get().resultsDirection === direction ? get().resultsDirection : null,
+    });
   },
+
+  resetComparison: () =>
+    set({
+      hasCompared: false,
+      comparisonResults: [],
+      resultsDirection: null,
+    }),
 }));
