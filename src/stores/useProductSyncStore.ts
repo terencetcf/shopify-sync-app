@@ -3,9 +3,12 @@ import { shopifyApi } from '../services/shopify';
 import { print } from 'graphql';
 import gql from 'graphql-tag';
 import type { Product } from '../types/products';
-import type { CompareDirection, ComparisonResult } from '../types/sync';
+import type {
+  CompareDirection,
+  ComparisonResult,
+  Environment,
+} from '../types/sync';
 
-// Add this interface
 interface ProductsResponse {
   products: {
     edges: Array<{
@@ -14,6 +17,22 @@ interface ProductsResponse {
     }>;
     pageInfo: {
       hasNextPage: boolean;
+    };
+  };
+}
+
+interface CollectionsResponse {
+  collections: {
+    edges: Array<{
+      node: {
+        id: string;
+        handle: string;
+      };
+      cursor: string;
+    }>;
+    pageInfo: {
+      hasNextPage: boolean;
+      endCursor: string | null;
     };
   };
 }
@@ -27,6 +46,7 @@ interface ProductsSyncStore {
   compareDirection: CompareDirection;
   hasCompared: boolean;
   resultsDirection: CompareDirection | null;
+  targetCollectionsMap: Map<string, string>;
   setCompareDirection: (direction: CompareDirection) => void;
   fetchProducts: () => Promise<void>;
   resetComparison: () => void;
@@ -34,7 +54,6 @@ interface ProductsSyncStore {
   compareProducts: (direction: CompareDirection) => Promise<void>;
 }
 
-// Define the GraphQL query as a constant
 const SYNC_PRODUCTS_QUERY = gql`
   query {
     products(first: 25) {
@@ -98,6 +117,81 @@ const SYNC_PRODUCTS_QUERY = gql`
   }
 `;
 
+// Update the query to include cursor and pageInfo
+const GET_COLLECTIONS_QUERY = gql`
+  query getCollections($cursor: String) {
+    collections(first: 250, after: $cursor) {
+      edges {
+        node {
+          id
+          handle
+        }
+        cursor
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+// Update the mutations to include collections
+const UPDATE_PRODUCT_MUTATION = gql`
+  mutation updateProduct($input: ProductInput!) {
+    productUpdate(input: $input) {
+      product {
+        id
+        handle
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`;
+
+const CREATE_PRODUCT_MUTATION = gql`
+  mutation createProduct($input: ProductInput!) {
+    productCreate(input: $input) {
+      product {
+        id
+        handle
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`;
+
+const getCollectionIds = async (
+  environment: Environment
+): Promise<Map<string, string>> => {
+  const collectionsMap = new Map<string, string>();
+  let hasNextPage = true;
+  let cursor: string | null = null;
+
+  while (hasNextPage) {
+    const response: CollectionsResponse =
+      await shopifyApi.post<CollectionsResponse>(environment, {
+        query: print(GET_COLLECTIONS_QUERY),
+        variables: { cursor },
+      });
+
+    response.collections.edges.forEach((edge) => {
+      collectionsMap.set(edge.node.handle, edge.node.id);
+    });
+
+    hasNextPage = response.collections.pageInfo.hasNextPage;
+    cursor = response.collections.pageInfo.endCursor;
+  }
+
+  return collectionsMap;
+};
+
 export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
   productionProducts: [],
   stagingProducts: [],
@@ -107,6 +201,7 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
   compareDirection: 'production_to_staging',
   hasCompared: false,
   resultsDirection: null,
+  targetCollectionsMap: new Map(),
 
   setCompareDirection: (direction) => {
     set({
@@ -115,6 +210,7 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
         get().resultsDirection === direction ? get().comparisonResults : [],
       hasCompared:
         get().resultsDirection === direction ? get().hasCompared : false,
+      targetCollectionsMap: new Map(),
     });
   },
 
@@ -123,6 +219,7 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
       hasCompared: false,
       comparisonResults: [],
       resultsDirection: null,
+      targetCollectionsMap: new Map(),
     }),
 
   fetchProducts: async () => {
@@ -177,11 +274,22 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
 
       const targetEnvironment =
         direction === 'production_to_staging' ? 'staging' : 'production';
+      const collectionsMap = get().targetCollectionsMap;
 
       // Process selected products
       for (const id of ids) {
         const sourceProduct = sourceProducts.find((prod) => prod.id === id);
         if (!sourceProduct) continue;
+
+        // Get collection handles from source product
+        const collectionHandles = sourceProduct.collections.edges.map(
+          (edge) => edge.node.handle
+        );
+
+        // Use stored collection IDs mapping
+        const collectionIds = collectionHandles
+          .map((handle) => collectionsMap.get(handle))
+          .filter((id): id is string => id !== undefined);
 
         // Check if product exists in target
         const targetCheckResponse = await shopifyApi.post(targetEnvironment, {
@@ -204,94 +312,52 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
 
         const existingProduct = targetCheckResponse.products.edges[0]?.node;
 
+        const productInput = {
+          handle: sourceProduct.handle,
+          title: sourceProduct.title,
+          templateSuffix: sourceProduct.templateSuffix,
+          vendor: sourceProduct.vendor,
+          category: sourceProduct.category,
+          combinedListingRole: sourceProduct.combinedListingRole,
+          productType: sourceProduct.productType,
+          productOptions: sourceProduct.options?.map((option) => ({
+            name: option.name,
+            position: option.position,
+            values: option.values.map((value) => ({ name: value })),
+            linkedMetafield: option.linkedMetafield,
+          })),
+          requiresSellingPlan: sourceProduct.requiresSellingPlan,
+          seo: sourceProduct.seo,
+          status: sourceProduct.status,
+          tags: sourceProduct.tags,
+          metafields: sourceProduct.metafields?.edges.map((edge) => ({
+            namespace: edge.node.namespace,
+            key: edge.node.key,
+            value: edge.node.value,
+            type: edge.node.type,
+          })),
+          giftCard: sourceProduct.isGiftCard,
+          giftCardTemplateSuffix: sourceProduct.giftCardTemplateSuffix,
+          descriptionHtml: sourceProduct.descriptionHtml,
+          collectionsToJoin: collectionIds,
+        };
+
         if (existingProduct) {
-          // Update existing product
           await shopifyApi.post(targetEnvironment, {
-            query: print(gql`
-              mutation UpdateProductWithNewMedia($input: ProductInput!) {
-                productUpdate(input: $input) {
-                  product {
-                    id
-                    handle
-                  }
-                  userErrors {
-                    field
-                    message
-                  }
-                }
-              }
-            `),
+            query: print(UPDATE_PRODUCT_MUTATION),
             variables: {
               input: {
                 id: existingProduct.id,
-                handle: sourceProduct.handle,
-                title: sourceProduct.title,
-                templateSuffix: sourceProduct.templateSuffix,
-                vendor: sourceProduct.vendor,
-                category: sourceProduct.category,
-                combinedListingRole: sourceProduct.combinedListingRole,
-                productType: sourceProduct.productType,
-                requiresSellingPlan: sourceProduct.requiresSellingPlan,
-                seo: sourceProduct.seo,
-                status: sourceProduct.status,
-                tags: sourceProduct.tags,
-                metafields: sourceProduct.metafields?.edges.map((edge) => ({
-                  namespace: edge.node.namespace,
-                  key: edge.node.key,
-                  value: edge.node.value,
-                  type: edge.node.type,
-                })),
-                giftCard: sourceProduct.isGiftCard,
-                giftCardTemplateSuffix: sourceProduct.giftCardTemplateSuffix,
-                descriptionHtml: sourceProduct.descriptionHtml,
+                ...productInput,
               },
             },
           });
         } else {
-          // Create new product
           await shopifyApi.post(targetEnvironment, {
-            query: print(gql`
-              mutation createProduct($input: ProductInput!) {
-                productCreate(input: $input) {
-                  product {
-                    id
-                    handle
-                  }
-                  userErrors {
-                    field
-                    message
-                  }
-                }
-              }
-            `),
+            query: print(CREATE_PRODUCT_MUTATION),
             variables: {
               input: {
-                handle: sourceProduct.handle,
-                title: sourceProduct.title,
-                templateSuffix: sourceProduct.templateSuffix,
-                vendor: sourceProduct.vendor,
-                category: sourceProduct.category,
-                combinedListingRole: sourceProduct.combinedListingRole,
-                productType: sourceProduct.productType,
-                productOptions: sourceProduct.options?.map((option) => ({
-                  name: option.name,
-                  position: option.position,
-                  values: option.values.map((value) => ({ name: value })),
-                  linkedMetafield: option.linkedMetafield,
-                })),
-                requiresSellingPlan: sourceProduct.requiresSellingPlan,
-                seo: sourceProduct.seo,
-                status: sourceProduct.status,
-                tags: sourceProduct.tags,
-                metafields: sourceProduct.metafields?.edges.map((edge) => ({
-                  namespace: edge.node.namespace,
-                  key: edge.node.key,
-                  value: edge.node.value,
-                  type: edge.node.type,
-                })),
-                giftCard: sourceProduct.isGiftCard,
-                giftCardTemplateSuffix: sourceProduct.giftCardTemplateSuffix,
-                descriptionHtml: sourceProduct.descriptionHtml,
+                ...productInput,
               },
             },
           });
@@ -318,7 +384,14 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
   compareProducts: async (direction: CompareDirection) => {
     set({ isLoading: true, error: null });
     try {
+      // Fetch products
       await get().fetchProducts();
+
+      // Fetch and store collection IDs mapping for target environment
+      const targetEnvironment =
+        direction === 'production_to_staging' ? 'staging' : 'production';
+      const collectionsMap = await getCollectionIds(targetEnvironment);
+      set({ targetCollectionsMap: collectionsMap });
 
       const sourceProducts =
         direction === 'production_to_staging'
@@ -451,6 +524,7 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
         error: 'Failed to compare products',
         isLoading: false,
         resultsDirection: null,
+        targetCollectionsMap: new Map(),
       });
       console.error('Error comparing products:', err);
     }
