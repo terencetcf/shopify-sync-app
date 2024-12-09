@@ -10,6 +10,7 @@ import ExportButton from '../components/ExportButton';
 import { downloadCsv } from '../utils/downloadCsv';
 import Notification from '../components/Notification';
 import ProductDetailsPanel from '../components/ProductDetailsPanel';
+import { logger } from '../utils/logger';
 
 export default function ProductsSync() {
   const {
@@ -60,7 +61,7 @@ export default function ProductsSync() {
       setSelectedItems(new Set());
       setShowSyncNotification(true);
     } catch (error) {
-      console.error('Error syncing products:', error);
+      logger.error('Error syncing products:', error);
     }
   };
 

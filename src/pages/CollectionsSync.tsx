@@ -9,6 +9,7 @@ import ExportButton from '../components/ExportButton';
 import { formatDate } from '../utils/formatDate';
 import { downloadCsv } from '../utils/downloadCsv';
 import Notification from '../components/Notification';
+import { logger } from '../utils/logger';
 
 export default function CollectionsSync() {
   const {
@@ -55,7 +56,7 @@ export default function CollectionsSync() {
       setSelectedItems(new Set());
       setShowSyncNotification(true);
     } catch (error) {
-      console.error('Error syncing collections:', error);
+      logger.error('Error syncing collections:', error);
     }
   };
 

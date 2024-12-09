@@ -7,6 +7,7 @@ import type {
 } from '../types/sync';
 import { print } from 'graphql';
 import gql from 'graphql-tag';
+import { logger } from '../utils/logger';
 
 interface Page {
   id: string;
@@ -233,7 +234,7 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
       const errorMessage =
         err.response?.data?.errors?.[0]?.message || 'Failed to fetch pages';
       set({ error: errorMessage, isLoading: false });
-      console.error('Error fetching pages:', err);
+      logger.error('Error fetching pages:', err);
       throw err;
     }
   },
@@ -301,7 +302,7 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
         isLoading: false,
         resultsDirection: null,
       });
-      console.error('Error comparing pages:', err);
+      logger.error('Error comparing pages:', err);
     }
   },
 
@@ -342,7 +343,7 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
 
           // Skip if pages are identical
           if (arePageDetailsEqual(sourcePageData, targetPageData)) {
-            console.log(
+            logger.info(
               `Skipping sync for ${sourcePageData.handle} - no changes detected`
             );
             continue;
@@ -370,7 +371,7 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
             },
           });
 
-          console.log(
+          logger.info(
             `Updated page ${sourcePageData.handle} - found differences`
           );
         } else {
@@ -396,7 +397,7 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
             },
           });
 
-          console.log(`Created new page ${sourcePageData.handle}`);
+          logger.info(`Created new page ${sourcePageData.handle}`);
         }
 
         set((state) => ({
@@ -413,13 +414,12 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
         err.message ||
         'Failed to sync pages';
       set({ error: errorMessage, isLoading: false });
-      console.error('Error syncing pages:', err);
+      logger.error('Error syncing pages:', err);
       throw err;
     }
   },
 
   setCompareDirection: (direction) => {
-    console.log('🚀 - direction:', direction);
     set({
       compareDirection: direction,
       comparisonResults:

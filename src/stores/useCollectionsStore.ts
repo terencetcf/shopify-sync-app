@@ -7,6 +7,7 @@ import {
 } from '../graphql/queries/collections';
 import { print } from 'graphql';
 import { PageInfo } from '../types/pageInfo';
+import { logger } from '../utils/logger';
 
 interface CollectionsResponse {
   collections: {
@@ -44,6 +45,7 @@ export const useCollectionsStore = create<CollectionsStore>((set) => ({
 
   fetchCollections: async (cursor?: string | null) => {
     set({ isLoading: true, error: null });
+
     try {
       const response = await shopifyApi.post<CollectionsResponse>(
         'production',
@@ -69,7 +71,7 @@ export const useCollectionsStore = create<CollectionsStore>((set) => ({
         err.response?.data?.errors?.[0]?.message ||
         'Failed to fetch collections';
       set({ error: errorMessage, isLoading: false });
-      console.error('Error fetching collections:', err);
+      logger.error('Error fetching collections:', err);
     }
   },
 
@@ -89,7 +91,7 @@ export const useCollectionsStore = create<CollectionsStore>((set) => ({
         err.response?.data?.errors?.[0]?.message ||
         'Failed to fetch collection details';
       set({ error: errorMessage, isLoadingDetails: false });
-      console.error('Error fetching collection details:', err);
+      logger.error('Error fetching collection details:', err);
     }
   },
 }));

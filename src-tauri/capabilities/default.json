@@ -24,6 +24,8 @@
           "path": "$DOWNLOAD"
         }
       ]
-    }
+    },
+    "sql:default",
+    "sql:allow-execute"
   ]
 }

@@ -8,6 +8,7 @@ import type { CollectionDetails } from '../types/collections';
 import { shopifyApi } from '../services/shopify';
 import { print } from 'graphql';
 import gql from 'graphql-tag';
+import { logger } from '../utils/logger';
 
 interface CollectionsSyncStore {
   productionCollections: CollectionDetails[];
@@ -163,7 +164,7 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
           err.response?.data?.errors?.[0]?.message ||
           'Failed to fetch collections';
         set({ error: errorMessage, isLoading: false });
-        console.error('Error fetching collections:', err);
+        logger.error('Error fetching collections:', err);
       }
     },
 
@@ -351,7 +352,7 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
           isLoading: false,
           resultsDirection: null,
         });
-        console.error('Error comparing collections:', err);
+        logger.error('Error comparing collections:', err);
       }
     },
 
@@ -456,7 +457,7 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
           err.response?.data?.errors?.[0]?.message ||
           'Failed to sync collections';
         set({ error: errorMessage, isLoading: false });
-        console.error('Error syncing collections:', err);
+        logger.error('Error syncing collections:', err);
         throw err;
       }
     },

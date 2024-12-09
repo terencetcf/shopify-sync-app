@@ -8,6 +8,7 @@ import type {
   ComparisonResult,
   Environment,
 } from '../types/sync';
+import { logger } from '../utils/logger';
 
 interface ProductsResponse {
   products: {
@@ -274,7 +275,7 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
       const errorMessage =
         err.response?.data?.errors?.[0]?.message || 'Failed to fetch products';
       set({ error: errorMessage, isLoading: false });
-      console.error('Error fetching products:', err);
+      logger.error('Error fetching products:', err);
     }
   },
 
@@ -395,7 +396,7 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
       const errorMessage =
         err.response?.data?.errors?.[0]?.message || 'Failed to sync products';
       set({ error: errorMessage, isLoading: false });
-      console.error('Error syncing products:', err);
+      logger.error('Error syncing products:', err);
       throw err;
     }
   },
@@ -545,7 +546,7 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
         resultsDirection: null,
         targetCollectionsMap: new Map(),
       });
-      console.error('Error comparing products:', err);
+      logger.error('Error comparing products:', err);
     }
   },
 }));

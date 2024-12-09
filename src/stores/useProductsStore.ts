@@ -8,6 +8,7 @@ import {
 import { print } from 'graphql';
 import { PageInfo } from '../types/pageInfo';
 import { DetailedProduct } from '../types/products';
+import { logger } from '../utils/logger';
 
 interface ProductsResponse {
   products: {
@@ -62,7 +63,7 @@ export const useProductsStore = create<ProductsStore>((set) => ({
       const errorMessage =
         err.response?.data?.errors?.[0]?.message || 'Failed to fetch products';
       set({ error: errorMessage, isLoading: false });
-      console.error('Error fetching products:', err);
+      logger.error('Error fetching products:', err);
     }
   },
 
@@ -82,7 +83,7 @@ export const useProductsStore = create<ProductsStore>((set) => ({
         err.response?.data?.errors?.[0]?.message ||
         'Failed to fetch product details';
       set({ error: errorMessage, isLoadingDetails: false });
-      console.error('Error fetching product details:', err);
+      logger.error('Error fetching product details:', err);
     }
   },
 }));

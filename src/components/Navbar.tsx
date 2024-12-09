@@ -1,4 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
+import { Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { deviceIdentifier } from '../utils/deviceIdentitifier';
 
 export default function Navbar() {
   const location = useLocation();
@@ -19,20 +21,15 @@ export default function Navbar() {
   return (
     <nav className="bg-gray-800 shadow">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 justify-between">
+        <div className="flex h-16 justify-between items-center">
           <div className="flex">
-            <div className="flex flex-shrink-0 items-center">
-              <Link
-                to="/"
-                className="flex items-center text-l font-semibold text-white"
-              >
-                <img
-                  src="/logo.svg"
-                  alt="Foxstow Shaker Doors"
-                  className="h-10 ml-1 mr-4"
-                />
-                Shopify Sync App
-              </Link>
+            <div className="flex flex-shrink-0 items-center font-semibold">
+              <img
+                src="/logo.svg"
+                alt="Foxstow Shaker Doors"
+                className="h-10 ml-1 mr-4"
+              />
+              Shopify Sync App
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               {navigation.map((item) => (
@@ -50,6 +47,25 @@ export default function Navbar() {
               ))}
             </div>
           </div>
+          {!deviceIdentifier.isWeb && (
+            <div className="flex items-center">
+              <Link
+                to="/settings"
+                className={`p-2 rounded-full hover:bg-gray-700 transition-colors ${
+                  currentPath === '/settings' ? 'bg-gray-700' : ''
+                }`}
+                title="Settings"
+              >
+                <Cog6ToothIcon
+                  className={`h-6 w-6 ${
+                    currentPath === '/settings'
+                      ? 'text-blue-500'
+                      : 'text-gray-300 hover:text-white'
+                  }`}
+                />
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </nav>
