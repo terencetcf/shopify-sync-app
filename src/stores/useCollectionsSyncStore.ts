@@ -31,9 +31,22 @@ interface CollectionsSyncStore {
   ) => Promise<void>;
 }
 
+interface CollectionsResponse {
+  collections: {
+    edges: Array<{
+      node: CollectionDetails;
+      cursor: string;
+    }>;
+    pageInfo: {
+      hasNextPage: boolean;
+      endCursor: string | null;
+    };
+  };
+}
+
 const COLLECTIONS_QUERY = gql`
-  query {
-    collections(first: 250) {
+  query getCollections($cursor: String) {
+    collections(first: 250, after: $cursor) {
       edges {
         node {
           id
@@ -53,6 +66,10 @@ const COLLECTIONS_QUERY = gql`
             description
           }
         }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -151,40 +168,86 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
     },
 
     fetchCollectionDetails: async (environment: Environment) => {
-      const response = await shopifyApi.post(environment, {
+      const response = await shopifyApi.post<CollectionsResponse>(environment, {
         query: print(COLLECTIONS_QUERY),
       });
 
-      return response.collections.edges.map(
-        (edge: { node: CollectionDetails }) => edge.node
-      );
+      return response.collections.edges.map((edge) => edge.node);
     },
 
     compareCollections: async (direction: CompareDirection) => {
       set({ isLoading: true, error: null });
       try {
-        await get().fetchCollections();
+        // First, fetch ALL collections from both environments
+        const sourceEnvironment =
+          direction === 'production_to_staging' ? 'production' : 'staging';
+        const targetEnvironment =
+          direction === 'production_to_staging' ? 'staging' : 'production';
 
-        const sourceCollections =
-          direction === 'production_to_staging'
-            ? get().productionCollections
-            : get().stagingCollections;
+        // Fetch all collections from source environment
+        let sourceCollections: CollectionDetails[] = [];
+        let hasNextPage = true;
+        let cursor: string | null = null;
 
-        const targetCollections =
-          direction === 'production_to_staging'
-            ? get().stagingCollections
-            : get().productionCollections;
+        while (hasNextPage) {
+          const response: CollectionsResponse =
+            await shopifyApi.post<CollectionsResponse>(sourceEnvironment, {
+              query: print(COLLECTIONS_QUERY),
+              variables: { cursor },
+            });
 
+          const newCollections = response.collections.edges.map(
+            (edge: { node: CollectionDetails }) => edge.node
+          );
+          sourceCollections = [...sourceCollections, ...newCollections];
+
+          hasNextPage = response.collections.pageInfo.hasNextPage;
+          cursor = response.collections.pageInfo.endCursor;
+        }
+
+        // Reset for target environment fetch
+        hasNextPage = true;
+        cursor = null;
+        let targetCollections: CollectionDetails[] = [];
+
+        // Fetch all collections from target environment
+        while (hasNextPage) {
+          const response: CollectionsResponse =
+            await shopifyApi.post<CollectionsResponse>(targetEnvironment, {
+              query: print(COLLECTIONS_QUERY),
+              variables: { cursor },
+            });
+
+          const newCollections = response.collections.edges.map(
+            (edge: { node: CollectionDetails }) => edge.node
+          );
+          targetCollections = [...targetCollections, ...newCollections];
+
+          hasNextPage = response.collections.pageInfo.hasNextPage;
+          cursor = response.collections.pageInfo.endCursor;
+        }
+
+        // Store the complete collections lists
+        set({
+          productionCollections:
+            direction === 'production_to_staging'
+              ? sourceCollections
+              : targetCollections,
+          stagingCollections:
+            direction === 'production_to_staging'
+              ? targetCollections
+              : sourceCollections,
+        });
+
+        // Now do the comparison with complete data
         const results: ComparisonResult[] = [];
 
-        // Only check collections from source to target based on direction
         sourceCollections.forEach((sourceCollection) => {
           const targetCollection = targetCollections.find(
             (target) => target.handle === sourceCollection.handle
           );
 
           if (!targetCollection) {
-            // Collection missing in target environment
             results.push({
               id: sourceCollection.id,
               handle: sourceCollection.handle,
