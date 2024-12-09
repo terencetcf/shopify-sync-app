@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
-import { deviceIdentifier } from '../utils/deviceIdentitifier';
+import { deviceIdentifier } from '../utils/deviceIdentifier';
 
 export default function Navbar() {
   const location = useLocation();

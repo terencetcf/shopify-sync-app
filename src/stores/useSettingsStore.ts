@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import Database from '@tauri-apps/plugin-sql';
-import { deviceIdentifier } from '../utils/deviceIdentitifier';
+import { deviceIdentifier } from '../utils/deviceIdentifier';
 import { logger } from '../utils/logger';
 
 interface Settings {
