@@ -7,7 +7,6 @@ export default function Navbar() {
   const currentPath = location.pathname;
 
   const navigation = [
-    { name: 'Collections', href: '/collections', key: 'collections' },
     { name: 'Products', href: '/products', key: 'products' },
     {
       name: 'Collections Sync',

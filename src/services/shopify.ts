@@ -34,7 +34,7 @@ const getEnvironmentConfig = (environment: Environment) => {
 };
 
 export const shopifyApi = {
-  async post<T = any>(
+  async post<T>(
     environment: Environment,
     data: ShopifyRequestData
   ): Promise<T> {

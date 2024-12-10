@@ -1,6 +1,6 @@
 import { Fragment, useEffect } from 'react';
 import { Transition } from '@headlessui/react';
-import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { XMarkIcon } from '@heroicons/react/20/solid';
 
 interface NotificationProps {
@@ -8,6 +8,7 @@ interface NotificationProps {
   title: string;
   message: string;
   onClose: () => void;
+  type?: 'success' | 'error';
 }
 
 export default function Notification({
@@ -15,6 +16,7 @@ export default function Notification({
   title,
   message,
   onClose,
+  type = 'success',
 }: NotificationProps) {
   useEffect(() => {
     if (show) {
@@ -24,6 +26,9 @@ export default function Notification({
       return () => clearTimeout(timer);
     }
   }, [show, onClose]);
+
+  const Icon = type === 'error' ? XCircleIcon : CheckCircleIcon;
+  const textColor = type === 'error' ? 'text-red-400' : 'text-emerald-400';
 
   return (
     <div
@@ -45,15 +50,10 @@ export default function Notification({
             <div className="p-4 bg-gradient-to-r from-gray-900 to-gray-800">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
-                  <CheckCircleIcon
-                    className="h-6 w-6 text-emerald-400"
-                    aria-hidden="true"
-                  />
+                  <Icon className={`h-6 w-6 ${textColor}`} aria-hidden="true" />
                 </div>
                 <div className="ml-3 w-0 flex-1 pt-0.5">
-                  <p className="text-sm font-medium text-emerald-400">
-                    {title}
-                  </p>
+                  <p className={`text-sm font-medium ${textColor}`}>{title}</p>
                   <p className="mt-1 text-sm text-gray-300">{message}</p>
                 </div>
                 <div className="ml-4 flex flex-shrink-0">
