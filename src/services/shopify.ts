@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { Environment } from '../types/sync';
 import { useSettingsStore } from '../stores/useSettingsStore';
-import { debug } from '@tauri-apps/plugin-log';
 import SHOPIFY_PROXIES from '../../shopify_proxy.json';
 
 interface ShopifyRequestData {
@@ -40,7 +39,6 @@ export const shopifyApi = {
     data: ShopifyRequestData
   ): Promise<T> {
     const envConfig = getEnvironmentConfig(environment);
-    debug(`🚀 - envConfig: ${JSON.stringify(envConfig)}`);
 
     const response = await axios<ShopifyResponse<T>>({
       url: envConfig.url,
