@@ -5,21 +5,26 @@ interface TableRowProps {
   result: ComparisonResult;
   isSelected: boolean;
   onSelect: () => void;
+  onClick: () => void;
 }
 
 export default function TableRow({
   result,
   isSelected,
   onSelect,
+  onClick,
 }: TableRowProps) {
   return (
-    <tr key={result.id} className="hover:bg-gray-700">
+    <tr className="hover:bg-gray-700" onClick={onClick}>
       <td className="relative px-7 sm:w-12 sm:px-6">
         <input
           type="checkbox"
           className="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
           checked={isSelected}
-          onChange={onSelect}
+          onChange={(e) => {
+            e.stopPropagation();
+            onSelect();
+          }}
         />
       </td>
       <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">

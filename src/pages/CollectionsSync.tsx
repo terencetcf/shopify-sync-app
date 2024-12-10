@@ -210,82 +210,87 @@ export default function CollectionsSync() {
                   </p>
                 </div>
               )}
-              <table className="min-w-full divide-y divide-gray-700">
-                <thead>
-                  <tr>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
-                        checked={selectedHandles.size === collections.length}
-                        onChange={handleSelectAll}
-                      />
-                    </th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200">
-                      Title
-                    </th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200">
-                      Handle
-                    </th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200">
-                      Differences
-                    </th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200">
-                      Last Updated
-                    </th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200">
-                      Last Compared
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-800">
-                  {collections.map((collection) => (
-                    <tr
-                      key={collection.handle}
-                      onClick={() => handleRowClick(collection)}
-                      className="cursor-pointer hover:bg-gray-750"
-                    >
-                      <td
-                        className="px-3 py-4 text-sm text-gray-300"
-                        onClick={(e) => e.stopPropagation()} // Prevent row click when clicking checkbox
-                      >
+              <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+                <table className="min-w-full divide-y divide-gray-700">
+                  <thead className="bg-gray-800">
+                    <tr>
+                      <th className="px-3 py-4 text-left text-sm font-semibold text-gray-200">
                         <input
                           type="checkbox"
                           className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
-                          checked={selectedHandles.has(collection.handle)}
-                          onChange={() => handleSelectRow(collection.handle)}
+                          checked={selectedHandles.size === collections.length}
+                          onChange={handleSelectAll}
                         />
-                      </td>
-                      <td className="px-3 py-4 text-sm text-gray-300">
-                        <div
-                          className="max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap"
-                          title={collection.title}
-                        >
-                          {collection.title}
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
-                        {collection.handle}
-                      </td>
-                      <td className="px-3 py-4 text-sm text-gray-300">
-                        <div className="flex flex-wrap gap-1">
-                          {collection.differences
-                            .split(', ')
-                            .map((difference, index) => (
-                              <DifferenceBadge key={index} text={difference} />
-                            ))}
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
-                        {new Date(collection.updated_at).toLocaleString()}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
-                        {new Date(collection.compared_at).toLocaleString()}
-                      </td>
+                      </th>
+                      <th className="px-3 py-4 text-left text-sm font-semibold text-gray-200">
+                        Title
+                      </th>
+                      <th className="px-3 py-4 text-left text-sm font-semibold text-gray-200">
+                        Handle
+                      </th>
+                      <th className="px-3 py-4 text-left text-sm font-semibold text-gray-200">
+                        Differences
+                      </th>
+                      <th className="px-3 py-4 text-left text-sm font-semibold text-gray-200">
+                        Last Updated
+                      </th>
+                      <th className="px-3 py-4 text-left text-sm font-semibold text-gray-200">
+                        Last Compared
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700 bg-gray-800">
+                    {collections.map((collection) => (
+                      <tr
+                        key={collection.handle}
+                        onClick={() => handleRowClick(collection)}
+                        className="cursor-pointer hover:bg-gray-750"
+                      >
+                        <td
+                          className="px-3 py-4 text-sm text-gray-300"
+                          onClick={(e) => e.stopPropagation()} // Prevent row click when clicking checkbox
+                        >
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
+                            checked={selectedHandles.has(collection.handle)}
+                            onChange={() => handleSelectRow(collection.handle)}
+                          />
+                        </td>
+                        <td className="px-3 py-4 text-sm text-gray-300">
+                          <div
+                            className="max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap"
+                            title={collection.title}
+                          >
+                            {collection.title}
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
+                          {collection.handle}
+                        </td>
+                        <td className="px-3 py-4 text-sm text-gray-300">
+                          <div className="flex flex-wrap gap-1">
+                            {collection.differences
+                              .split(', ')
+                              .map((difference, index) => (
+                                <DifferenceBadge
+                                  key={index}
+                                  text={difference}
+                                />
+                              ))}
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
+                          {new Date(collection.updated_at).toLocaleString()}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
+                          {new Date(collection.compared_at).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

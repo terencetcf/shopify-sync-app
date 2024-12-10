@@ -1,11 +1,4 @@
-export interface ComparisonResult {
-  id: string;
-  handle: string;
-  title: string;
-  status: 'missing_in_staging' | 'missing_in_production' | 'different';
-  differences?: string[];
-  updatedAt: string | null;
-}
+import type { ComparisonResult as BaseComparisonResult } from './sync';
 
 export interface PageDetails {
   id: string;
@@ -26,6 +19,15 @@ export interface PageDetails {
       };
     }>;
   };
+}
+
+export interface ComparisonResult extends BaseComparisonResult {
+  production_id?: string;
+  staging_id?: string;
+  title: string;
+  handle: string;
+  differences?: string[];
+  updatedAt: string;
 }
 
 export interface Page {

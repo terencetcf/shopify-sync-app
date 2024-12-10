@@ -61,6 +61,22 @@ pub fn run() {
             );",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 7,
+            description: "create_pages_table",
+            sql: "CREATE TABLE IF NOT EXISTS pages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                handle TEXT NOT NULL,
+                production_id TEXT,
+                staging_id TEXT,
+                title TEXT NOT NULL,
+                differences TEXT,
+                updated_at TIMESTAMP NOT NULL,
+                compared_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(handle)
+            );",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

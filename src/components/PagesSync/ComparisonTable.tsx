@@ -1,12 +1,13 @@
+import { ComparisonResult } from '../../types/pages';
 import TableHeader from './TableHeader';
 import TableRow from './TableRow';
-import { ComparisonResult } from '../../types/pages';
 
-interface ComparisonTableProps {
+export interface ComparisonTableProps {
   results: ComparisonResult[];
   selectedItems: Set<string>;
   onSelectAll: () => void;
   onSelectItem: (handle: string) => void;
+  onRowClick: (page: ComparisonResult) => void;
 }
 
 export default function ComparisonTable({
@@ -14,6 +15,7 @@ export default function ComparisonTable({
   selectedItems,
   onSelectAll,
   onSelectItem,
+  onRowClick,
 }: ComparisonTableProps) {
   if (results.length === 0) return null;
 
@@ -32,8 +34,9 @@ export default function ComparisonTable({
                 <TableRow
                   key={result.id}
                   result={result}
-                  isSelected={selectedItems.has(result.id)}
-                  onSelect={() => onSelectItem(result.id)}
+                  isSelected={selectedItems.has(result.handle)}
+                  onSelect={() => onSelectItem(result.handle)}
+                  onClick={() => onRowClick(result)}
                 />
               ))}
             </tbody>
