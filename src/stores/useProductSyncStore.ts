@@ -307,23 +307,26 @@ export const useProductSyncStore = create<ProductsSyncStore>((set, get) => ({
           .filter((id): id is string => id !== undefined);
 
         // Check if product exists in target
-        const targetCheckResponse = await shopifyApi.post(targetEnvironment, {
-          query: print(gql`
-            query getProductByHandle($handle: String!) {
-              products(first: 1, query: $handle) {
-                edges {
-                  node {
-                    id
-                    handle
+        const targetCheckResponse: any = await shopifyApi.post(
+          targetEnvironment,
+          {
+            query: print(gql`
+              query getProductByHandle($handle: String!) {
+                products(first: 1, query: $handle) {
+                  edges {
+                    node {
+                      id
+                      handle
+                    }
                   }
                 }
               }
-            }
-          `),
-          variables: {
-            handle: `handle:${sourceProduct.handle}`,
-          },
-        });
+            `),
+            variables: {
+              handle: `handle:${sourceProduct.handle}`,
+            },
+          }
+        );
 
         const existingProduct = targetCheckResponse.products.edges[0]?.node;
 

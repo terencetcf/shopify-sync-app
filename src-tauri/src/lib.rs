@@ -45,6 +45,22 @@ pub fn run() {
             sql: "INSERT INTO settings (key, value) VALUES ('shopifyStagingAccessToken', '');",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 6,
+            description: "create_collections_table",
+            sql: "CREATE TABLE IF NOT EXISTS collections (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                handle TEXT NOT NULL,
+                production_id TEXT,
+                staging_id TEXT,
+                title TEXT NOT NULL,
+                differences TEXT,
+                updated_at TIMESTAMP NOT NULL,
+                compared_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(handle)
+            );",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

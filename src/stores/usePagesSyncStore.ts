@@ -211,7 +211,7 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const response = await shopifyApi.post(environment, {
+      const response: any = await shopifyApi.post(environment, {
         query: print(PAGES_LIST_QUERY),
         variables: {
           after: cursor,
@@ -318,7 +318,7 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
       // Process one page at a time
       for (const id of ids) {
         // 1. Fetch full page details from source
-        const sourceResponse = await shopifyApi.post(sourceEnvironment, {
+        const sourceResponse: any = await shopifyApi.post(sourceEnvironment, {
           query: print(PAGE_DETAILS_QUERY),
           variables: { id },
         });
@@ -326,12 +326,15 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
         const sourcePageData = sourceResponse.page;
 
         // 2. Check if page exists in target by handle
-        const targetCheckResponse = await shopifyApi.post(targetEnvironment, {
-          query: print(GET_PAGES_QUERY),
-          variables: {
-            first: 250,
-          },
-        });
+        const targetCheckResponse: any = await shopifyApi.post(
+          targetEnvironment,
+          {
+            query: print(GET_PAGES_QUERY),
+            variables: {
+              first: 250,
+            },
+          }
+        );
 
         const existingPage = targetCheckResponse.pages.edges.find(
           (edge: any) => edge.node.handle === sourcePageData.handle

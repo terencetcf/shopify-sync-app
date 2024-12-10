@@ -3,32 +3,40 @@ import {
   Transition,
   TransitionChild,
   DialogPanel,
+  DialogTitle,
 } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Fragment, useEffect } from 'react';
-import { useCollectionsStore } from '../../stores/useCollectionsStore';
+import {
+  CollectionComparison,
+  useCollectionsSyncStore,
+} from '../../stores/useCollectionsSyncStore';
 import CollectionProducts from './CollectionProducts';
 import { formatDate } from '../../utils/formatDate';
 
 interface CollectionDetailsPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  collectionId: string | null;
+  collection: CollectionComparison | null;
 }
 
 export default function CollectionDetailsPanel({
   isOpen,
   onClose,
-  collectionId,
+  collection,
 }: CollectionDetailsPanelProps) {
   const { selectedCollection, isLoadingDetails, fetchCollectionDetails } =
-    useCollectionsStore();
+    useCollectionsSyncStore();
 
   useEffect(() => {
-    if (isOpen && collectionId) {
-      fetchCollectionDetails(collectionId);
+    if (isOpen && collection) {
+      if (collection?.production_id) {
+        fetchCollectionDetails(collection.production_id, 'production');
+      } else {
+        fetchCollectionDetails(collection.staging_id!, 'staging');
+      }
     }
-  }, [isOpen, collectionId, fetchCollectionDetails]);
+  }, [isOpen, collection, fetchCollectionDetails]);
 
   return (
     <Transition show={isOpen} as={Fragment}>
@@ -62,9 +70,9 @@ export default function CollectionDetailsPanel({
                 {/* Header */}
                 <div className="px-4 sm:px-6 py-6 bg-gray-900">
                   <div className="flex items-start justify-between">
-                    <Dialog.Title className="text-base font-semibold leading-6 text-gray-100">
+                    <DialogTitle className="text-base font-semibold leading-6 text-gray-100">
                       Collection Details
-                    </Dialog.Title>
+                    </DialogTitle>
                     <div className="ml-3 flex h-7 items-center">
                       <button
                         type="button"
