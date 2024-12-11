@@ -2,32 +2,40 @@ import { Fragment, useEffect } from 'react';
 import {
   Dialog,
   DialogPanel,
+  DialogTitle,
   Transition,
   TransitionChild,
 } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { useProductsStore } from '../stores/useProductsStore';
-import { formatDate } from '../utils/formatDate';
+import {
+  ProductComparison,
+  useProductsSyncStore,
+} from '../../stores/useProductsSyncStore';
+import { formatDate } from '../../utils/formatDate';
 
 interface ProductDetailsPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  productId: string | null;
+  product: ProductComparison | null;
 }
 
 export default function ProductDetailsPanel({
   isOpen,
   onClose,
-  productId,
+  product,
 }: ProductDetailsPanelProps) {
   const { selectedProduct, isLoadingDetails, error, fetchProductDetails } =
-    useProductsStore();
+    useProductsSyncStore();
 
   useEffect(() => {
-    if (isOpen && productId) {
-      fetchProductDetails(productId);
+    if (isOpen && product) {
+      if (product.production_id) {
+        fetchProductDetails(product.production_id, 'production');
+      } else {
+        fetchProductDetails(product.staging_id!, 'staging');
+      }
     }
-  }, [isOpen, productId, fetchProductDetails]);
+  }, [isOpen, product, fetchProductDetails]);
 
   return (
     <Transition show={isOpen} as={Fragment}>
@@ -61,9 +69,9 @@ export default function ProductDetailsPanel({
                 {/* Header */}
                 <div className="px-4 sm:px-6 py-6 bg-gray-900">
                   <div className="flex items-start justify-between">
-                    <Dialog.Title className="text-base font-semibold leading-6 text-gray-100">
-                      Product Details
-                    </Dialog.Title>
+                    <DialogTitle className="text-base font-semibold leading-6 text-gray-100">
+                      {selectedProduct?.title || 'Product Details'}
+                    </DialogTitle>
                     <div className="ml-3 flex h-7 items-center">
                       <button
                         type="button"
@@ -78,7 +86,6 @@ export default function ProductDetailsPanel({
                 </div>
 
                 {/* Content */}
-                <div className="relative flex-1 px-4 sm:px-6"></div>
                 {isLoadingDetails ? (
                   <div className="flex-1 px-4 sm:px-6">
                     <div className="h-full flex items-center justify-center">
@@ -98,18 +105,18 @@ export default function ProductDetailsPanel({
                         <dl className="mt-4 space-y-4">
                           <div>
                             <dt className="text-sm font-medium text-gray-400">
-                              Title
-                            </dt>
-                            <dd className="mt-1 text-sm text-gray-200">
-                              {selectedProduct.title}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-sm font-medium text-gray-400">
                               Handle
                             </dt>
                             <dd className="mt-1 text-sm text-gray-200">
                               {selectedProduct.handle}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-sm font-medium text-gray-400">
+                              Last Updated
+                            </dt>
+                            <dd className="mt-1 text-sm text-gray-200">
+                              {formatDate(selectedProduct.updatedAt)}
                             </dd>
                           </div>
                           <div>
@@ -135,14 +142,6 @@ export default function ProductDetailsPanel({
                             <dd className="mt-1 text-sm text-gray-200">
                               {selectedProduct.productType}
                             </dd>
-                          </div>{' '}
-                          <div>
-                            <dt className="text-sm font-medium text-gray-400">
-                              Last Updated
-                            </dt>
-                            <dd className="mt-1 text-sm text-gray-200">
-                              {formatDate(selectedProduct.updatedAt)}
-                            </dd>
                           </div>
                         </dl>
                       </div>
@@ -153,7 +152,7 @@ export default function ProductDetailsPanel({
                           Media
                         </h3>
                         <div className="mt-4">
-                          {selectedProduct.media?.edges.length > 0 ? (
+                          {selectedProduct.media?.edges.length ? (
                             <div className="grid grid-cols-2 gap-4">
                               {selectedProduct.media.edges.map(({ node }) => (
                                 <div
@@ -190,7 +189,7 @@ export default function ProductDetailsPanel({
                           Collections
                         </h3>
                         <div className="mt-4">
-                          {selectedProduct.collections.edges.length > 0 ? (
+                          {selectedProduct.collections?.edges.length > 0 ? (
                             <ul className="space-y-2">
                               {selectedProduct.collections.edges.map(
                                 ({ node }) => (
@@ -265,7 +264,7 @@ export default function ProductDetailsPanel({
                           Options
                         </h3>
                         <div className="mt-4">
-                          {selectedProduct.options?.length > 0 ? (
+                          {selectedProduct.options?.length ? (
                             <div className="space-y-4">
                               {selectedProduct.options.map((option) => (
                                 <div key={option.name}>

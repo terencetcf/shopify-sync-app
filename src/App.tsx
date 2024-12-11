@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import Products from './pages/Products';
 import Sync from './pages/CollectionsSync';
 import ProductSync from './pages/ProductsSync';
 import PagesSync from './pages/PagesSync';
@@ -9,6 +8,7 @@ import LoadingScreen from './components/LoadingScreen';
 import './App.css';
 import { useEffect, useState } from 'react';
 import { useSettingsStore } from './stores/useSettingsStore';
+import SettingsAlert from './components/SettingsAlert';
 
 function App() {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -50,13 +50,13 @@ function App() {
     <BrowserRouter>
       <div className="min-h-screen bg-gray-900">
         <Navbar />
-        <main className="max-w-[1600px] mx-auto px-1 py-1">
+        <SettingsAlert />
+        <main className="mx-auto px-1 py-1">
           <Routes>
             <Route
               path="/"
               element={<Navigate to="/collections-sync" replace />}
             />
-            <Route path="/products" element={<Products />} />
             <Route path="/collections-sync" element={<Sync />} />
             <Route path="/products-sync" element={<ProductSync />} />
             <Route path="/pages-sync" element={<PagesSync />} />

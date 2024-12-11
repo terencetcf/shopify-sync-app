@@ -70,7 +70,7 @@ export default function PageDetailsPanel({
                 <div className="px-4 sm:px-6 py-6 bg-gray-900">
                   <div className="flex items-start justify-between">
                     <DialogTitle className="text-base font-semibold leading-6 text-gray-100">
-                      Page Details
+                      {selectedPage?.title || 'Page Details'}
                     </DialogTitle>
                     <div className="ml-3 flex h-7 items-center">
                       <button
@@ -98,18 +98,41 @@ export default function PageDetailsPanel({
                     <div className="space-y-6 pt-6 pb-5">
                       {/* Title Section */}
                       <div className="space-y-6 border-b border-gray-700 pb-6">
-                        <h3 className="text-lg font-medium text-gray-200">
-                          {selectedPage.title}
-                        </h3>
-
                         <div className="grid grid-cols-1 gap-4">
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-400">
+                              Handle
+                            </h4>
+                            <p className="mt-1 text-sm text-gray-200">
+                              {selectedPage.handle}
+                            </p>
+                          </div>
+
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-400">
+                              Last Updated
+                            </h4>
+                            <p className="mt-1 text-sm text-gray-200">
+                              {formatDate(selectedPage.updatedAt)}
+                            </p>
+                          </div>
+
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-400">
+                              Template Suffix
+                            </h4>
+                            <p className="mt-1 text-sm text-gray-200">
+                              {selectedPage.templateSuffix || 'None'}
+                            </p>
+                          </div>
+
                           {selectedPage.body && (
                             <div>
                               <h4 className="text-sm font-medium text-gray-400">
                                 Content
                               </h4>
                               <div
-                                className="mt-1 text-sm text-gray-200 prose prose-invert max-w-none"
+                                className="bg-gray-900 p-4 rounded-md mt-1 text-sm text-gray-200 prose prose-invert max-w-none"
                                 dangerouslySetInnerHTML={{
                                   __html: selectedPage.body,
                                 }}
@@ -126,6 +149,17 @@ export default function PageDetailsPanel({
                             </p>
                           </div>
                         </div>
+
+                        {selectedPage.publishedAt && (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-400">
+                              Published At
+                            </h4>
+                            <p className="mt-1 text-sm text-gray-200">
+                              {formatDate(selectedPage.publishedAt)}
+                            </p>
+                          </div>
+                        )}
                       </div>
 
                       {/* Metafields Section */}
@@ -150,52 +184,6 @@ export default function PageDetailsPanel({
                               </p>
                             </div>
                           ))}
-                        </div>
-                      </div>
-
-                      {/* Additional Details */}
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-200 mb-4">
-                          Additional Details
-                        </h3>
-                        <div className="grid grid-cols-1 gap-4">
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-400">
-                              Handle
-                            </h4>
-                            <p className="mt-1 text-sm text-gray-200">
-                              {selectedPage.handle}
-                            </p>
-                          </div>
-
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-400">
-                              Template Suffix
-                            </h4>
-                            <p className="mt-1 text-sm text-gray-200">
-                              {selectedPage.templateSuffix || 'None'}
-                            </p>
-                          </div>
-
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-400">
-                              Last Updated
-                            </h4>
-                            <p className="mt-1 text-sm text-gray-200">
-                              {formatDate(selectedPage.updatedAt)}
-                            </p>
-                          </div>
-
-                          {selectedPage.publishedAt && (
-                            <div>
-                              <h4 className="text-sm font-medium text-gray-400">
-                                Published At
-                              </h4>
-                              <p className="mt-1 text-sm text-gray-200">
-                                {formatDate(selectedPage.publishedAt)}
-                              </p>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
