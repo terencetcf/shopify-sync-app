@@ -4,6 +4,8 @@ import { logger } from '../utils/logger';
 import { Environment } from '../types/sync';
 import { PageInfo } from '../types/pageInfo';
 import { pageDb } from '../services/pageDb';
+import gql from 'graphql-tag';
+import { print } from 'graphql';
 
 interface ShopifyPage {
   id: string;
@@ -111,7 +113,7 @@ interface PageUpdateResponse {
   };
 }
 
-const PAGES_QUERY = `
+const PAGES_QUERY = gql`
   query GetPages($cursor: String) {
     pages(first: 250, after: $cursor) {
       edges {
@@ -130,7 +132,7 @@ const PAGES_QUERY = `
   }
 `;
 
-const PAGE_DETAILS_QUERY = `
+const PAGE_DETAILS_QUERY = gql`
   query GetPageDetails($id: ID!) {
     page(id: $id) {
       id
@@ -156,7 +158,7 @@ const PAGE_DETAILS_QUERY = `
   }
 `;
 
-const CREATE_PAGE_MUTATION = `
+const CREATE_PAGE_MUTATION = gql`
   mutation CreatePage($page: PageCreateInput!) {
     pageCreate(page: $page) {
       page {
@@ -173,7 +175,7 @@ const CREATE_PAGE_MUTATION = `
   }
 `;
 
-const UPDATE_PAGE_MUTATION = `
+const UPDATE_PAGE_MUTATION = gql`
   mutation UpdatePage($id: ID!, $page: PageUpdateInput!) {
     pageUpdate(id: $id, page: $page) {
       page {
@@ -201,7 +203,7 @@ async function fetchAllPages(environment: Environment): Promise<ShopifyPage[]> {
 
       const response: ShopifyPageResponse =
         await shopifyApi.post<ShopifyPageResponse>(environment, {
-          query: PAGES_QUERY,
+          query: print(PAGES_QUERY),
           variables: { cursor },
         });
 
@@ -240,7 +242,7 @@ async function fetchPageDetails(
     const response = await shopifyApi.post<{
       page: DetailedShopifyPage;
     }>(environment, {
-      query: PAGE_DETAILS_QUERY,
+      query: print(PAGE_DETAILS_QUERY),
       variables: { id },
     });
     return response.page;
@@ -348,7 +350,7 @@ async function syncPageToEnvironment(
       const response = await shopifyApi.post<PageUpdateResponse>(
         targetEnvironment,
         {
-          query: UPDATE_PAGE_MUTATION,
+          query: print(UPDATE_PAGE_MUTATION),
           variables: {
             id: page[targetId],
             page: input,
@@ -368,7 +370,7 @@ async function syncPageToEnvironment(
       const response = await shopifyApi.post<PageCreateResponse>(
         targetEnvironment,
         {
-          query: CREATE_PAGE_MUTATION,
+          query: print(CREATE_PAGE_MUTATION),
           variables: {
             page: input,
           },
@@ -535,7 +537,7 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
       const response = await shopifyApi.post<{
         page: DetailedPage;
       }>(environment, {
-        query: PAGE_DETAILS_QUERY,
+        query: print(PAGE_DETAILS_QUERY),
         variables: { id },
       });
       set({

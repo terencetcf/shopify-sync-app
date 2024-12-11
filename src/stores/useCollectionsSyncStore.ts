@@ -4,6 +4,8 @@ import { logger } from '../utils/logger';
 import { Environment } from '../types/sync';
 import { PageInfo } from '../types/pageInfo';
 import { collectionDb } from '../services/collectionDb';
+import gql from 'graphql-tag';
+import { print } from 'graphql';
 
 interface ShopifyCollection {
   id: string;
@@ -122,7 +124,7 @@ interface CollectionUpdateResponse {
   };
 }
 
-const COLLECTIONS_QUERY = `
+const COLLECTIONS_QUERY = gql`
   query GetCollections($cursor: String) {
     collections(first: 250, after: $cursor) {
       edges {
@@ -141,7 +143,7 @@ const COLLECTIONS_QUERY = `
   }
 `;
 
-const COLLECTION_DETAILS_QUERY = `
+const COLLECTION_DETAILS_QUERY = gql`
   query GetCollectionDetails($id: ID!) {
     collection(id: $id) {
       id
@@ -178,6 +180,34 @@ const COLLECTION_DETAILS_QUERY = `
   }
 `;
 
+const UPDATE_COLLECTION_MUTATION = gql`
+  mutation updateCollection($input: CollectionInput!) {
+    collectionUpdate(input: $input) {
+      collection {
+        id
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`;
+
+const CREATE_COLLECTION_MUTATION = gql`
+  mutation createCollection($input: CollectionInput!) {
+    collectionCreate(input: $input) {
+      collection {
+        id
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`;
+
 async function fetchAllCollections(
   environment: Environment
 ): Promise<ShopifyCollection[]> {
@@ -193,7 +223,7 @@ async function fetchAllCollections(
 
       const response: ShopifyCollectionResponse =
         await shopifyApi.post<ShopifyCollectionResponse>(environment, {
-          query: COLLECTIONS_QUERY,
+          query: print(COLLECTIONS_QUERY),
           variables: { cursor },
         });
 
@@ -236,7 +266,7 @@ async function fetchCollectionDetails(
     const response = await shopifyApi.post<{
       collection: DetailedShopifyCollection;
     }>(environment, {
-      query: COLLECTION_DETAILS_QUERY,
+      query: print(COLLECTION_DETAILS_QUERY),
       variables: { id },
     });
     return response.collection;
@@ -343,24 +373,10 @@ async function syncCollectionToEnvironment(
 
     if (collection[targetId]) {
       // Collection exists in target environment, use update mutation
-      const UPDATE_COLLECTION_MUTATION = `
-        mutation updateCollection($input: CollectionInput!) {
-          collectionUpdate(input: $input) {
-            collection {
-              id
-            }
-            userErrors {
-              field
-              message
-            }
-          }
-        }
-      `;
-
       const response = await shopifyApi.post<CollectionUpdateResponse>(
         targetEnvironment,
         {
-          query: UPDATE_COLLECTION_MUTATION,
+          query: print(UPDATE_COLLECTION_MUTATION),
           variables: {
             input: {
               ...input,
@@ -379,24 +395,10 @@ async function syncCollectionToEnvironment(
       );
     } else {
       // Collection doesn't exist in target environment, use create mutation
-      const CREATE_COLLECTION_MUTATION = `
-        mutation createCollection($input: CollectionInput!) {
-          collectionCreate(input: $input) {
-            collection {
-              id
-            }
-            userErrors {
-              field
-              message
-            }
-          }
-        }
-      `;
-
       const response = await shopifyApi.post<CollectionCreateResponse>(
         targetEnvironment,
         {
-          query: CREATE_COLLECTION_MUTATION,
+          query: print(CREATE_COLLECTION_MUTATION),
           variables: { input },
         }
       );
@@ -574,7 +576,7 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
         const response = await shopifyApi.post<{
           collection: DetailedCollection;
         }>(environment, {
-          query: COLLECTION_DETAILS_QUERY,
+          query: print(COLLECTION_DETAILS_QUERY),
           variables: { id },
         });
         set({

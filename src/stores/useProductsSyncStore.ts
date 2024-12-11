@@ -3,6 +3,8 @@ import { shopifyApi } from '../services/shopify';
 import { logger } from '../utils/logger';
 import { Environment } from '../types/sync';
 import { productDb } from '../services/productDb';
+import gql from 'graphql-tag';
+import { print } from 'graphql';
 
 interface ShopifyProduct {
   id: string;
@@ -114,7 +116,7 @@ interface ProductsSyncStore {
   fetchProductDetails: (id: string, environment: Environment) => Promise<void>;
 }
 
-const PRODUCTS_QUERY = `
+const PRODUCTS_QUERY = gql`
   query GetProducts($cursor: String) {
     products(first: 250, after: $cursor) {
       edges {
@@ -133,7 +135,7 @@ const PRODUCTS_QUERY = `
   }
 `;
 
-const PRODUCT_DETAILS_QUERY = `
+const PRODUCT_DETAILS_QUERY = gql`
   query GetProductDetails($id: ID!) {
     product(id: $id) {
       id
@@ -214,7 +216,7 @@ const PRODUCT_DETAILS_QUERY = `
   }
 `;
 
-const CREATE_PRODUCT_MUTATION = `
+const CREATE_PRODUCT_MUTATION = gql`
   mutation CreateProduct($input: ProductInput!) {
     productCreate(input: $input) {
       product {
@@ -231,7 +233,7 @@ const CREATE_PRODUCT_MUTATION = `
   }
 `;
 
-const UPDATE_PRODUCT_MUTATION = `
+const UPDATE_PRODUCT_MUTATION = gql`
   mutation UpdateProduct($input: ProductInput!) {
     productUpdate(input: $input) {
       product {
@@ -274,7 +276,7 @@ async function fetchAllProducts(
 
       const response: ProductsResponse =
         await shopifyApi.post<ProductsResponse>(environment, {
-          query: PRODUCTS_QUERY,
+          query: print(PRODUCTS_QUERY),
           variables: { cursor },
         });
 
@@ -310,7 +312,7 @@ async function fetchProductDetails(
     const response = await shopifyApi.post<{
       product: DetailedProduct;
     }>(environment, {
-      query: PRODUCT_DETAILS_QUERY,
+      query: print(PRODUCT_DETAILS_QUERY),
       variables: { id },
     });
     return response.product;
@@ -543,7 +545,7 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
         if (product[targetIdField]) {
           // Update existing product
           await shopifyApi.post(targetEnvironment, {
-            query: UPDATE_PRODUCT_MUTATION,
+            query: print(UPDATE_PRODUCT_MUTATION),
             variables: {
               input: {
                 id: product[targetIdField],
@@ -554,7 +556,7 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
         } else {
           // Create new product
           await shopifyApi.post(targetEnvironment, {
-            query: CREATE_PRODUCT_MUTATION,
+            query: print(CREATE_PRODUCT_MUTATION),
             variables: {
               input,
             },
@@ -600,7 +602,7 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
       const response = await shopifyApi.post<{
         product: DetailedProduct;
       }>(environment, {
-        query: PRODUCT_DETAILS_QUERY,
+        query: print(PRODUCT_DETAILS_QUERY),
         variables: { id },
       });
       set({
