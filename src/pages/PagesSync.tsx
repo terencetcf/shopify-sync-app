@@ -5,6 +5,7 @@ import PageDetailsPanel from '../components/PageDetails/PageDetailsPanel';
 import { usePagesSyncStore } from '../stores/usePagesSyncStore';
 import { SyncProgress } from '../components/SyncProgress';
 import { PageComparison } from '../types/page';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
 function DifferenceBadge({ text }: { text: string }) {
   const getBadgeColor = (text: string) => {
@@ -136,11 +137,16 @@ export default function PagesSync() {
             <button
               onClick={handleCompare}
               disabled={isLoading}
-              className="inline-flex items-center rounded-md bg-gray-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-500 transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`p-2 rounded-md bg-emerald-500 text-white hover:bg-emerald-400 transition-colors duration-200 ${
+                isLoading ? 'cursor-not-allowed opacity-50' : ''
+              }`}
+              title="Get latest data from servers."
             >
-              {isLoading && selectedHandles.size === 0
-                ? 'Updating pages comparison...'
-                : 'Refresh pages comparison'}
+              <ArrowPathIcon
+                className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`}
+                aria-hidden="true"
+              />
+              <span className="sr-only">Get latest data from servers.</span>
             </button>
           </div>
 
@@ -185,7 +191,8 @@ export default function PagesSync() {
         </div>
         <div className="flex items-center justify-between">
           <div className="flex text-sm text-gray-400 mt-4">
-            Compare pages between production and staging environments.
+            Select item(s) from the list below and click the button on the right
+            to sync with the environment.
           </div>
           <div className="flex text-sm text-gray-400 mt-4">
             <svg
@@ -244,7 +251,9 @@ export default function PagesSync() {
                 <div className="fixed inset-x-0 top-1/2 transform -translate-y-1/2 flex flex-col items-center justify-center space-y-4 z-50">
                   <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
                   <p className="text-sm font-medium text-gray-200 px-4 py-2 rounded-md shadow-lg">
-                    {selectedHandles.size > 0 ? 'Syncing...' : 'Updating...'}
+                    {selectedHandles.size > 0
+                      ? 'Syncing...'
+                      : 'Retrieving data from servers...'}
                   </p>
                 </div>
               )}
