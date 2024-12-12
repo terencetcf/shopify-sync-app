@@ -4,6 +4,7 @@ import Notification from '../components/Notification';
 import CollectionDetailsPanel from '../components/CollectionDetails/CollectionDetailsPanel';
 import type { CollectionComparison } from '../stores/useCollectionsSyncStore';
 import { useCollectionsSyncStore } from '../stores/useCollectionsSyncStore';
+import { SyncProgress } from '../components/SyncProgress';
 
 function DifferenceBadge({ text }: { text: string }) {
   const getBadgeColor = (text: string) => {
@@ -38,6 +39,7 @@ export default function CollectionsSync() {
     fetchStoredCollections,
     compareCollections,
     syncCollections,
+    syncProgress,
   } = useCollectionsSyncStore();
 
   const [selectedHandles, setSelectedHandles] = useState<Set<string>>(
@@ -420,6 +422,18 @@ export default function CollectionsSync() {
         }}
         collection={selectedCollection}
       />
+
+      {syncProgress && (
+        <div className="fixed bottom-6 right-6 w-96 z-50">
+          <div className="transform transition-all duration-500 ease-in-out">
+            <SyncProgress
+              current={syncProgress.current}
+              total={syncProgress.total}
+              type="collections"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -64,6 +64,10 @@ interface CollectionsSyncStore {
   isLoading: boolean;
   isLoadingDetails: boolean;
   error: string | null;
+  syncProgress: {
+    current: number;
+    total: number;
+  } | null;
   fetchStoredCollections: () => Promise<void>;
   compareCollections: () => Promise<void>;
   syncCollections: (
@@ -400,25 +404,24 @@ async function syncCollectionToEnvironment(
       collection[sourceId]
     );
 
-    // Get product IDs from source collection
+    // Get product IDs from source collection and map them in parallel
     const sourceProductHandles = sourceDetails.products.edges.map(
       ({ node }) => node.handle
     );
 
-    // Get corresponding target product IDs
-    const targetProductIds: string[] = [];
-    for (const productHandle of sourceProductHandles) {
-      const productComparison = await productDb.getProductComparison(
-        productHandle
-      );
-      if (productComparison?.[targetId]) {
-        targetProductIds.push(productComparison[targetId]!);
-      } else {
-        throw new Error(
-          `Product ${productHandle} not found in ${targetEnvironment}!`
+    const targetProductIds = await Promise.all(
+      sourceProductHandles.map(async (productHandle) => {
+        const productComparison = await productDb.getProductComparison(
+          productHandle
         );
-      }
-    }
+        if (!productComparison?.[targetId]) {
+          throw new Error(
+            `Product ${productHandle} not found in ${targetEnvironment}!`
+          );
+        }
+        return productComparison[targetId]!;
+      })
+    );
 
     // Prepare mutation variables
     const input = {
@@ -434,7 +437,7 @@ async function syncCollectionToEnvironment(
             src: sourceDetails.image.url,
           }
         : null,
-      products: targetProductIds, // Add products to mutation input
+      products: targetProductIds,
     };
 
     if (collection[targetId]) {
@@ -493,6 +496,7 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
     isLoading: false,
     isLoadingDetails: false,
     error: null,
+    syncProgress: null,
 
     fetchStoredCollections: async () => {
       set({ isLoading: true, error: null });
@@ -580,50 +584,83 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
       handles: string[],
       targetEnvironment: Environment
     ) => {
-      set({ isLoading: true, error: null });
+      set({
+        isLoading: true,
+        error: null,
+        syncProgress: { current: 0, total: handles.length },
+      });
+
       try {
         const sourceEnvironment =
           targetEnvironment === 'production' ? 'staging' : 'production';
 
-        for (const handle of handles) {
-          // Sync the collection
-          await syncCollectionToEnvironment(
-            handle,
-            sourceEnvironment,
-            targetEnvironment
+        // Process collections in chunks to avoid overwhelming the API
+        const chunkSize = 3; // Adjust based on API limits
+        for (let i = 0; i < handles.length; i += chunkSize) {
+          const chunk = handles.slice(i, i + chunkSize);
+
+          // Process chunk in parallel
+          await Promise.all(
+            chunk.map(async (handle) => {
+              try {
+                // Sync the collection
+                await syncCollectionToEnvironment(
+                  handle,
+                  sourceEnvironment,
+                  targetEnvironment
+                );
+
+                // Update the collection in state and database
+                const collection = await collectionDb.getCollectionComparison(
+                  handle
+                );
+                if (collection) {
+                  // Update database
+                  await collectionDb.setCollectionComparison({
+                    ...collection,
+                    differences: 'In sync',
+                    compared_at: new Date().toISOString(),
+                  });
+
+                  // Update state
+                  set((state) => ({
+                    collections: state.collections.map((c) =>
+                      c.handle === handle
+                        ? {
+                            ...c,
+                            differences: 'In sync',
+                            compared_at: new Date().toISOString(),
+                          }
+                        : c
+                    ),
+                  }));
+                }
+              } catch (err) {
+                logger.error(
+                  `Failed to sync collection ${handle} to ${targetEnvironment}:`,
+                  err
+                );
+                throw err;
+              }
+            })
           );
 
-          // Update the collection in state and database
-          const collection = await collectionDb.getCollectionComparison(handle);
-          if (collection) {
-            // Update database
-            await collectionDb.setCollectionComparison({
-              ...collection,
-              differences: 'In sync',
-              compared_at: new Date().toISOString(),
-            });
-
-            // Update state
-            set((state) => ({
-              collections: state.collections.map((c) =>
-                c.handle === handle
-                  ? {
-                      ...c,
-                      differences: 'In sync',
-                      compared_at: new Date().toISOString(),
-                    }
-                  : c
-              ),
-            }));
-          }
+          // Update progress after each chunk
+          set((state) => ({
+            ...state,
+            syncProgress: {
+              current: Math.min(i + chunkSize, handles.length),
+              total: handles.length,
+            },
+          }));
         }
 
-        set({ isLoading: false });
+        set((state) => ({ ...state, isLoading: false, syncProgress: null }));
         logger.info(
           `Successfully synced ${handles.length} collections to ${targetEnvironment}`
         );
       } catch (err: any) {
-        set({ error: err.message, isLoading: false });
+        set({ error: err.message, isLoading: false, syncProgress: null });
         logger.error('Failed to sync collections:', err);
         throw err;
       }

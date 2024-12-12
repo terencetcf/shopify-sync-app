@@ -106,6 +106,10 @@ interface ProductsSyncStore {
   isLoading: boolean;
   isLoadingDetails: boolean;
   error: string | null;
+  syncProgress: {
+    current: number;
+    total: number;
+  } | null;
   fetchStoredProducts: () => Promise<void>;
   compareProducts: () => Promise<void>;
   syncProducts: (
@@ -454,6 +458,7 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
   isLoading: false,
   isLoadingDetails: false,
   error: null,
+  syncProgress: null,
 
   fetchStoredProducts: async () => {
     set({ isLoading: true, error: null });
@@ -532,123 +537,140 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
   },
 
   syncProducts: async (handles: string[], targetEnvironment: Environment) => {
-    set({ isLoading: true, error: null });
+    set({
+      isLoading: true,
+      error: null,
+      syncProgress: { current: 0, total: handles.length },
+    });
+
     try {
       const sourceEnvironment =
         targetEnvironment === 'production' ? 'staging' : 'production';
       const sourceIdField =
         sourceEnvironment === 'production' ? 'production_id' : 'staging_id';
       const targetIdField =
-        targetEnvironment === 'production' ? 'production_id' : 'staging_id';
+        sourceEnvironment === 'production' ? 'staging_id' : 'production_id';
 
-      for (const handle of handles) {
-        // Sync the product
-        const product = await productDb.getProductComparison(handle);
-        if (!product || !product[sourceIdField]) {
-          throw new Error(
-            `Product ${handle} not found in ${sourceEnvironment}`
-          );
-        }
+      // Process products in chunks to avoid overwhelming the API
+      const chunkSize = 3;
+      for (let i = 0; i < handles.length; i += chunkSize) {
+        const chunk = handles.slice(i, i + chunkSize);
+        await Promise.all(
+          chunk.map(async (handle) => {
+            try {
+              // Sync the product
+              const product = await productDb.getProductComparison(handle);
+              if (!product || !product[sourceIdField]) {
+                throw new Error(
+                  `Product ${handle} not found in ${sourceEnvironment}`
+                );
+              }
 
-        // Fetch source product details
-        logger.info(
-          `👓 Retrieving product (${product.handle}) details from ${sourceEnvironment}...`
+              // Fetch source product details
+              logger.info(
+                `👓 Retrieving product (${product.handle}) details from ${sourceEnvironment}...`
+              );
+              const sourceDetails = await fetchProductDetails(
+                sourceEnvironment,
+                product[sourceIdField]
+              );
+
+              // Prepare mutation input
+              const input = {
+                title: sourceDetails.title,
+                handle: sourceDetails.handle,
+                descriptionHtml: sourceDetails.descriptionHtml,
+                vendor: sourceDetails.vendor,
+                productType: sourceDetails.productType,
+                status: sourceDetails.status,
+                tags: sourceDetails.tags,
+                category: sourceDetails.category,
+                templateSuffix: sourceDetails.templateSuffix,
+                metafields: sourceDetails.metafields.edges.map((edge) => ({
+                  namespace: edge.node.namespace,
+                  key: edge.node.key,
+                  value: edge.node.value,
+                  type: edge.node.type,
+                })),
+                giftCardTemplateSuffix: sourceDetails.giftCardTemplateSuffix,
+                requiresSellingPlan: sourceDetails.requiresSellingPlan,
+                seo: sourceDetails.seo,
+              };
+
+              logger.info(
+                `📋 Syncing product (${product.handle}) to ${targetEnvironment}...`
+              );
+              if (product[targetIdField]) {
+                // Update existing product
+                await shopifyApi.post(targetEnvironment, {
+                  query: print(UPDATE_PRODUCT_MUTATION),
+                  variables: {
+                    input: {
+                      id: product[targetIdField],
+                      ...input,
+                    },
+                    media: [], // TODO: temporary disabled for trial account
+                  },
+                });
+              } else {
+                // Create new product
+                await shopifyApi.post(targetEnvironment, {
+                  query: print(CREATE_PRODUCT_MUTATION),
+                  variables: {
+                    input,
+                    media: [], // TODO: temporary disabled for trial account
+                  },
+                });
+              }
+
+              // Update database and state
+              await productDb.setProductComparison({
+                ...product,
+                differences: 'In sync',
+                compared_at: new Date().toISOString(),
+              });
+
+              set((state) => ({
+                products: state.products.map((p) =>
+                  p.handle === handle
+                    ? {
+                        ...p,
+                        differences: 'In sync',
+                        compared_at: new Date().toISOString(),
+                      }
+                    : p
+                ),
+              }));
+
+              logger.info(
+                `👍 Product (${product.handle}) has been successfully synced to ${targetEnvironment}!`
+              );
+            } catch (err) {
+              logger.error(
+                `Failed to sync product ${handle} to ${targetEnvironment}:`,
+                err
+              );
+              throw err;
+            }
+          })
         );
-        const sourceDetails = await fetchProductDetails(
-          sourceEnvironment,
-          product[sourceIdField]!
-        );
-        logger.info('product:', sourceDetails, targetIdField, product);
 
-        // Prepare mutation input
-        const input = {
-          title: sourceDetails.title,
-          handle: sourceDetails.handle,
-          descriptionHtml: sourceDetails.descriptionHtml,
-          vendor: sourceDetails.vendor,
-          productType: sourceDetails.productType,
-          status: sourceDetails.status,
-          tags: sourceDetails.tags,
-          category: sourceDetails.category,
-          templateSuffix: sourceDetails.templateSuffix,
-          metafields: sourceDetails.metafields.edges.map(({ node }) => ({
-            namespace: node.namespace,
-            key: node.key,
-            value: node.value,
-            type: node.type,
-          })),
-
-          giftCardTemplateSuffix: sourceDetails.giftCardTemplateSuffix,
-          requiresSellingPlan: sourceDetails.requiresSellingPlan,
-          seo: sourceDetails.seo,
-        };
-
-        // TODO: add this back when not sync against trial store
-        // const media =
-        //   sourceDetails.media?.edges
-        //     .filter(({ node }) => !!node.preview?.image?.url?.length)
-        //     .map(({ node }) => ({
-        //       mediaContentType: node.mediaContentType,
-        //       alt: node.preview?.image?.altText,
-        //       originalSource: node.preview?.image?.url,
-        //     })) ?? [];
-
-        logger.info(
-          `📋 Syncing product (${product.handle}) to ${targetEnvironment}...`
-        );
-        if (product[targetIdField]) {
-          // Update existing product
-          await shopifyApi.post(targetEnvironment, {
-            query: print(UPDATE_PRODUCT_MUTATION),
-            variables: {
-              input: {
-                id: product[targetIdField],
-                ...input,
-              },
-              media: [], // TODO: temporary disabled for trial account
-            },
-          });
-        } else {
-          // Create new product
-          await shopifyApi.post(targetEnvironment, {
-            query: print(CREATE_PRODUCT_MUTATION),
-            variables: {
-              input,
-              media: [], // TODO: temporary disabled for trial account
-            },
-          });
-        }
-
-        // Update database and state
-        await productDb.setProductComparison({
-          ...product,
-          differences: 'In sync',
-          compared_at: new Date().toISOString(),
-        });
-
+        // Update progress after each chunk
         set((state) => ({
-          products: state.products.map((p) =>
-            p.handle === handle
-              ? {
-                  ...p,
-                  differences: 'In sync',
-                  compared_at: new Date().toISOString(),
-                }
-              : p
-          ),
+          ...state,
+          syncProgress: {
+            current: Math.min(i + chunkSize, handles.length),
+            total: handles.length,
+          },
         }));
-
-        logger.info(
-          `👍 Product (${product.handle}) has been successfully synced to ${targetEnvironment}!`
-        );
       }
 
-      set({ isLoading: false });
+      set((state) => ({ ...state, isLoading: false, syncProgress: null }));
       logger.info(
         `✅ Successfully synced ${handles.length} products to ${targetEnvironment}`
       );
     } catch (err: any) {
-      set({ error: err.message, isLoading: false });
+      set({ error: err.message, isLoading: false, syncProgress: null });
       logger.error('Failed to sync products:', err);
       throw err;
     }

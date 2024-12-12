@@ -3,6 +3,7 @@ import { Environment } from '../types/sync';
 import Notification from '../components/Notification';
 import PageDetailsPanel from '../components/PageDetails/PageDetailsPanel';
 import { PageComparison, usePagesSyncStore } from '../stores/usePagesSyncStore';
+import { SyncProgress } from '../components/SyncProgress';
 
 function DifferenceBadge({ text }: { text: string }) {
   const getBadgeColor = (text: string) => {
@@ -30,8 +31,15 @@ function DifferenceBadge({ text }: { text: string }) {
 }
 
 export default function PagesSync() {
-  const { pages, isLoading, error, fetchStoredPages, comparePages, syncPages } =
-    usePagesSyncStore();
+  const {
+    pages,
+    isLoading,
+    error,
+    fetchStoredPages,
+    comparePages,
+    syncPages,
+    syncProgress,
+  } = usePagesSyncStore();
 
   const [selectedHandles, setSelectedHandles] = useState<Set<string>>(
     new Set()
@@ -403,6 +411,18 @@ export default function PagesSync() {
         }}
         page={selectedPage}
       />
+
+      {syncProgress && (
+        <div className="fixed bottom-6 right-6 w-96 z-50">
+          <div className="transform transition-all duration-500 ease-in-out">
+            <SyncProgress
+              current={syncProgress.current}
+              total={syncProgress.total}
+              type="pages"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

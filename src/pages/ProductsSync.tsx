@@ -6,6 +6,7 @@ import {
   ProductComparison,
   useProductsSyncStore,
 } from '../stores/useProductsSyncStore';
+import { SyncProgress } from '../components/SyncProgress';
 
 function DifferenceBadge({ text }: { text: string }) {
   const getBadgeColor = (text: string) => {
@@ -40,6 +41,7 @@ export default function ProductsSync() {
     fetchStoredProducts,
     compareProducts,
     syncProducts,
+    syncProgress,
   } = useProductsSyncStore();
 
   const [selectedHandles, setSelectedHandles] = useState<Set<string>>(
@@ -419,6 +421,18 @@ export default function ProductsSync() {
         }}
         product={selectedProduct}
       />
+
+      {syncProgress && (
+        <div className="fixed bottom-6 right-6 w-96 z-50">
+          <div className="transform transition-all duration-500 ease-in-out">
+            <SyncProgress
+              current={syncProgress.current}
+              total={syncProgress.total}
+              type="products"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

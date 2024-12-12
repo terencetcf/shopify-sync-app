@@ -52,6 +52,10 @@ interface PagesSyncStore {
   isLoading: boolean;
   isLoadingDetails: boolean;
   error: string | null;
+  syncProgress: {
+    current: number;
+    total: number;
+  } | null;
   fetchStoredPages: () => Promise<void>;
   comparePages: () => Promise<void>;
   syncPages: (
@@ -413,6 +417,7 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
   isLoading: false,
   isLoadingDetails: false,
   error: null,
+  syncProgress: null,
 
   fetchStoredPages: async () => {
     set({ isLoading: true, error: null });
@@ -490,50 +495,79 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
   },
 
   syncPages: async (handles: string[], targetEnvironment: Environment) => {
-    set({ isLoading: true, error: null });
+    set({
+      isLoading: true,
+      error: null,
+      syncProgress: { current: 0, total: handles.length },
+    });
+
     try {
       const sourceEnvironment =
         targetEnvironment === 'production' ? 'staging' : 'production';
 
-      for (const handle of handles) {
-        // Sync the page
-        await syncPageToEnvironment(
-          handle,
-          sourceEnvironment,
-          targetEnvironment
+      // Process pages in chunks to avoid overwhelming the API
+      const chunkSize = 3;
+      for (let i = 0; i < handles.length; i += chunkSize) {
+        const chunk = handles.slice(i, i + chunkSize);
+        await Promise.all(
+          chunk.map(async (handle) => {
+            try {
+              // Sync the page
+              await syncPageToEnvironment(
+                handle,
+                sourceEnvironment,
+                targetEnvironment
+              );
+
+              // Update the page in state and database
+              const page = await pageDb.getPageComparison(handle);
+              if (page) {
+                // Update database
+                await pageDb.setPageComparison({
+                  ...page,
+                  differences: 'In sync',
+                  compared_at: new Date().toISOString(),
+                });
+
+                // Update state
+                set((state) => ({
+                  pages: state.pages.map((p) =>
+                    p.handle === handle
+                      ? {
+                          ...p,
+                          differences: 'In sync',
+                          compared_at: new Date().toISOString(),
+                        }
+                      : p
+                  ),
+                }));
+              }
+            } catch (err) {
+              logger.error(
+                `Failed to sync page ${handle} to ${targetEnvironment}:`,
+                err
+              );
+              throw err;
+            }
+          })
         );
 
-        // Update the page in state and database
-        const page = await pageDb.getPageComparison(handle);
-        if (page) {
-          // Update database
-          await pageDb.setPageComparison({
-            ...page,
-            differences: 'In sync',
-            compared_at: new Date().toISOString(),
-          });
-
-          // Update state
-          set((state) => ({
-            pages: state.pages.map((p) =>
-              p.handle === handle
-                ? {
-                    ...p,
-                    differences: 'In sync',
-                    compared_at: new Date().toISOString(),
-                  }
-                : p
-            ),
-          }));
-        }
+        // Update progress after each chunk
+        set((state) => ({
+          ...state,
+          syncProgress: {
+            current: Math.min(i + chunkSize, handles.length),
+            total: handles.length,
+          },
+        }));
       }
 
-      set({ isLoading: false });
+      set((state) => ({ ...state, isLoading: false, syncProgress: null }));
       logger.info(
         `Successfully synced ${handles.length} pages to ${targetEnvironment}`
       );
     } catch (err: any) {
-      set({ error: err.message, isLoading: false });
+      set({ error: err.message, isLoading: false, syncProgress: null });
       logger.error('Failed to sync pages:', err);
       throw err;
     }

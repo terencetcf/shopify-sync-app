@@ -1,4 +1,4 @@
-import { info, error } from '@tauri-apps/plugin-log';
+import { info, warn, error } from '@tauri-apps/plugin-log';
 import { deviceIdentifier } from './deviceIdentifier';
 
 const formatMessage = (message: string, ...params: any) => {
@@ -17,6 +17,14 @@ export const logger = {
     }
 
     info(formatMessage(message, params));
+  },
+  warn: (message: string, ...params: any) => {
+    if (deviceIdentifier.isWeb) {
+      console.warn(message, params);
+      return;
+    }
+
+    warn(formatMessage(message, params));
   },
   error: (message: string, ...params: any) => {
     if (deviceIdentifier.isWeb) {
