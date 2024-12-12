@@ -117,7 +117,7 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
         targetEnvironment === 'production' ? 'staging' : 'production';
 
       // Process products in chunks to avoid overwhelming the API
-      const chunkSize = 3;
+      const chunkSize = 2;
       for (let i = 0; i < handles.length; i += chunkSize) {
         const chunk = handles.slice(i, i + chunkSize);
         await Promise.all(
