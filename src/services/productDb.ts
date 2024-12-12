@@ -1,5 +1,5 @@
+import { ProductComparison } from '../types/product';
 import { deviceIdentifier } from '../utils/deviceIdentifier';
-import { ProductComparison } from '../stores/useProductsSyncStore';
 import AppDb from './AppDb';
 
 export const productDb = {

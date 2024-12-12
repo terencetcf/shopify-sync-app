@@ -1,4 +1,4 @@
-import { DetailedCollection } from '../../stores/useCollectionsSyncStore';
+import { DetailedCollection } from '../../types/collection';
 
 interface CollectionProductsProps {
   collection: DetailedCollection;

@@ -1,5 +1,5 @@
+import { PageComparison } from '../types/page';
 import { deviceIdentifier } from '../utils/deviceIdentifier';
-import { PageComparison } from '../stores/usePagesSyncStore';
 import AppDb from './AppDb';
 
 export const pageDb = {

@@ -7,11 +7,9 @@ import {
   TransitionChild,
 } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import {
-  ProductComparison,
-  useProductsSyncStore,
-} from '../../stores/useProductsSyncStore';
+import { useProductsSyncStore } from '../../stores/useProductsSyncStore';
 import { formatDate } from '../../utils/formatDate';
+import { ProductComparison } from '../../types/product';
 
 interface ProductDetailsPanelProps {
   isOpen: boolean;

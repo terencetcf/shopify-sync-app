@@ -1,5 +1,5 @@
+import { CollectionComparison } from '../types/collection';
 import { deviceIdentifier } from '../utils/deviceIdentifier';
-import { CollectionComparison } from '../stores/useCollectionsSyncStore';
 import AppDb from './AppDb';
 
 const getCollectionComparisons = async (): Promise<CollectionComparison[]> => {

@@ -1,493 +1,14 @@
 import { create } from 'zustand';
-import { shopifyApi } from '../services/shopify';
+import { Environment } from '../types/environment';
+import { CollectionsSyncStore } from '../types/collection';
+import {
+  fetchAllCollections,
+  compareCollectionDetails,
+  syncCollectionToEnvironment,
+  fetchCollectionDetails,
+} from '../services/collectionService';
 import { logger } from '../utils/logger';
-import { Environment } from '../types/sync';
-import { PageInfo } from '../types/pageInfo';
 import { collectionDb } from '../services/collectionDb';
-import gql from 'graphql-tag';
-import { print } from 'graphql';
-import { productDb } from '../services/productDb';
-
-interface ShopifyCollection {
-  id: string;
-  handle: string;
-  title: string;
-  updatedAt: string;
-}
-
-export interface CollectionComparison {
-  handle: string;
-  production_id: string | null;
-  staging_id: string | null;
-  title: string;
-  differences: string;
-  updated_at: string;
-  compared_at: string;
-}
-
-export interface DetailedCollection {
-  id: string;
-  handle: string;
-  title: string;
-  updatedAt: string;
-  description: string;
-  descriptionHtml: string;
-  sortOrder: string;
-  templateSuffix: string | null;
-  image: {
-    altText: string | null;
-    url: string;
-  } | null;
-  seo: {
-    title: string | null;
-    description: string | null;
-  };
-  productsCount: {
-    count: number;
-  };
-  products: {
-    edges: Array<{
-      node: {
-        id: string;
-        title: string;
-        handle: string;
-        status: string;
-        totalInventory: number;
-      };
-    }>;
-  };
-}
-
-interface CollectionsSyncStore {
-  collections: CollectionComparison[];
-  selectedCollection: DetailedCollection | null;
-  isLoading: boolean;
-  isLoadingDetails: boolean;
-  error: string | null;
-  syncProgress: {
-    current: number;
-    total: number;
-  } | null;
-  fetchStoredCollections: () => Promise<void>;
-  compareCollections: () => Promise<void>;
-  syncCollections: (
-    handles: string[],
-    targetEnvironment: Environment
-  ) => Promise<void>;
-  fetchCollectionDetails: (
-    id: string,
-    environment: Environment
-  ) => Promise<void>;
-}
-
-interface ShopifyCollectionResponse {
-  collections: {
-    edges: Array<{
-      node: ShopifyCollection;
-    }>;
-    pageInfo: PageInfo;
-  };
-}
-
-interface DetailedShopifyCollection extends ShopifyCollection {
-  description: string;
-  descriptionHtml: string;
-  sortOrder: string;
-  templateSuffix: string | null;
-  image: {
-    altText: string | null;
-    url: string;
-  } | null;
-  seo: {
-    title: string | null;
-    description: string | null;
-  };
-  products: {
-    edges: Array<{
-      node: {
-        id: string;
-        title: string;
-        handle: string;
-        status: string;
-        totalInventory: number;
-      };
-    }>;
-  };
-}
-
-interface CollectionCreateResponse {
-  collectionCreate: {
-    collection: {
-      id: string;
-    } | null;
-    userErrors: Array<{
-      field: string[];
-      message: string;
-    }>;
-  };
-}
-
-interface CollectionUpdateResponse {
-  collectionUpdate: {
-    collection: {
-      id: string;
-    } | null;
-    userErrors: Array<{
-      field: string[];
-      message: string;
-    }>;
-  };
-}
-
-const COLLECTIONS_QUERY = gql`
-  query GetCollections($cursor: String) {
-    collections(first: 250, after: $cursor) {
-      edges {
-        node {
-          id
-          handle
-          title
-          updatedAt
-        }
-      }
-      pageInfo {
-        hasNextPage
-        endCursor
-      }
-    }
-  }
-`;
-
-const COLLECTION_DETAILS_QUERY = gql`
-  query GetCollectionDetails($id: ID!) {
-    collection(id: $id) {
-      id
-      handle
-      title
-      updatedAt
-      description
-      descriptionHtml
-      sortOrder
-      templateSuffix
-      image {
-        altText
-        url
-      }
-      seo {
-        title
-        description
-      }
-      productsCount {
-        count
-      }
-      products(first: 250) {
-        edges {
-          node {
-            id
-            title
-            handle
-            status
-            totalInventory
-          }
-        }
-      }
-    }
-  }
-`;
-
-const UPDATE_COLLECTION_MUTATION = gql`
-  mutation updateCollection($input: CollectionInput!) {
-    collectionUpdate(input: $input) {
-      collection {
-        id
-      }
-      userErrors {
-        field
-        message
-      }
-    }
-  }
-`;
-
-const CREATE_COLLECTION_MUTATION = gql`
-  mutation createCollection($input: CollectionInput!) {
-    collectionCreate(input: $input) {
-      collection {
-        id
-      }
-      userErrors {
-        field
-        message
-      }
-    }
-  }
-`;
-
-async function fetchAllCollections(
-  environment: Environment
-): Promise<ShopifyCollection[]> {
-  const collections: ShopifyCollection[] = [];
-  let hasNextPage = true;
-  let cursor: string | null = null;
-
-  while (hasNextPage) {
-    try {
-      logger.info(
-        `Fetching collections for ${environment} with cursor: ${cursor}`
-      );
-
-      const response: ShopifyCollectionResponse =
-        await shopifyApi.post<ShopifyCollectionResponse>(environment, {
-          query: print(COLLECTIONS_QUERY),
-          variables: { cursor },
-        });
-
-      const {
-        edges,
-        pageInfo,
-      }: {
-        edges: Array<{ node: ShopifyCollection }>;
-        pageInfo: { hasNextPage: boolean; endCursor: string };
-      } = response.collections;
-
-      const newCollections = edges.map(({ node }) => node);
-      collections.push(...newCollections);
-
-      logger.info(
-        `Fetched ${newCollections.length} collections for ${environment}`
-      );
-      hasNextPage = pageInfo.hasNextPage;
-      cursor = pageInfo.endCursor;
-
-      // Add a small delay to avoid rate limiting
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    } catch (err) {
-      logger.error(`Error fetching collections for ${environment}:`, err);
-      throw err;
-    }
-  }
-
-  logger.info(
-    `Total collections fetched for ${environment}: ${collections.length}`
-  );
-  return collections;
-}
-
-async function fetchCollectionDetails(
-  environment: Environment,
-  id: string
-): Promise<DetailedShopifyCollection> {
-  try {
-    const response = await shopifyApi.post<{
-      collection: DetailedShopifyCollection;
-    }>(environment, {
-      query: print(COLLECTION_DETAILS_QUERY),
-      variables: { id },
-    });
-    return response.collection;
-  } catch (err) {
-    logger.error(
-      `Error fetching collection details for ${id} in ${environment}:`,
-      err
-    );
-    throw err;
-  }
-}
-
-async function compareCollectionDetails(
-  productionCollection: DetailedShopifyCollection,
-  stagingCollection: DetailedShopifyCollection
-): Promise<string[]> {
-  const differences: string[] = [];
-
-  // Compare basic fields
-  if (productionCollection.title !== stagingCollection.title) {
-    differences.push('Title mismatch');
-    logger.info(
-      'Title mismatch',
-      productionCollection.title,
-      stagingCollection.title
-    );
-  }
-  if (productionCollection.description !== stagingCollection.description) {
-    differences.push('Description mismatch');
-    logger.info(
-      'Description mismatch',
-      productionCollection.description,
-      stagingCollection.description
-    );
-  }
-  if (
-    productionCollection.descriptionHtml !== stagingCollection.descriptionHtml
-  ) {
-    differences.push('HTML description mismatch');
-    logger.info(
-      'HTML description mismatch',
-      productionCollection.descriptionHtml,
-      stagingCollection.descriptionHtml
-    );
-  }
-  if (productionCollection.sortOrder !== stagingCollection.sortOrder) {
-    differences.push('Sort order mismatch');
-    logger.info(
-      'Sort order mismatch',
-      productionCollection.sortOrder,
-      stagingCollection.sortOrder
-    );
-  }
-  if (
-    productionCollection.templateSuffix !== stagingCollection.templateSuffix
-  ) {
-    differences.push('Template suffix mismatch');
-    logger.info(
-      'Template suffix mismatch',
-      productionCollection.templateSuffix,
-      stagingCollection.templateSuffix
-    );
-  }
-
-  // Compare image alt text
-  if (
-    productionCollection.image?.altText !== stagingCollection.image?.altText
-  ) {
-    differences.push('Image alt text mismatch');
-    logger.info(
-      'Image alt text mismatch',
-      productionCollection.image?.altText,
-      stagingCollection.image?.altText
-    );
-  }
-
-  // Compare SEO fields
-  if (productionCollection.seo?.title !== stagingCollection.seo?.title) {
-    differences.push('SEO title mismatch');
-    logger.info(
-      'SEO title mismatch',
-      productionCollection.seo?.title,
-      stagingCollection.seo?.title
-    );
-  }
-  if (
-    productionCollection.seo?.description !== stagingCollection.seo?.description
-  ) {
-    differences.push('SEO description mismatch');
-    logger.info(
-      'SEO description mismatch',
-      productionCollection.seo?.description,
-      stagingCollection.seo?.description
-    );
-  }
-
-  return differences;
-}
-
-async function syncCollectionToEnvironment(
-  handle: string,
-  sourceEnvironment: Environment,
-  targetEnvironment: Environment
-): Promise<void> {
-  try {
-    const sourceId =
-      sourceEnvironment === 'production' ? 'production_id' : 'staging_id';
-    const targetId =
-      sourceEnvironment === 'production' ? 'staging_id' : 'production_id';
-
-    const collection = await collectionDb.getCollectionComparison(handle);
-
-    if (!collection || !collection[sourceId]) {
-      throw new Error(`Collection ${handle} not found in ${sourceEnvironment}`);
-    }
-
-    // Fetch detailed collection data from source
-    const sourceDetails = await fetchCollectionDetails(
-      sourceEnvironment,
-      collection[sourceId]
-    );
-
-    // Get product IDs from source collection and map them in parallel
-    const sourceProductHandles = sourceDetails.products.edges.map(
-      ({ node }) => node.handle
-    );
-
-    const targetProductIds = await Promise.all(
-      sourceProductHandles.map(async (productHandle) => {
-        const productComparison = await productDb.getProductComparison(
-          productHandle
-        );
-        if (!productComparison?.[targetId]) {
-          throw new Error(
-            `Product ${productHandle} not found in ${targetEnvironment}!`
-          );
-        }
-        return productComparison[targetId]!;
-      })
-    );
-
-    // Prepare mutation variables
-    const input = {
-      handle: sourceDetails.handle,
-      title: sourceDetails.title,
-      descriptionHtml: sourceDetails.descriptionHtml,
-      sortOrder: sourceDetails.sortOrder,
-      templateSuffix: sourceDetails.templateSuffix,
-      seo: sourceDetails.seo,
-      image: sourceDetails.image
-        ? {
-            altText: sourceDetails.image.altText,
-            src: sourceDetails.image.url,
-          }
-        : null,
-      products: targetProductIds,
-    };
-
-    if (collection[targetId]) {
-      // Collection exists in target environment, use update mutation
-      const response = await shopifyApi.post<CollectionUpdateResponse>(
-        targetEnvironment,
-        {
-          query: print(UPDATE_COLLECTION_MUTATION),
-          variables: {
-            input: {
-              ...input,
-              id: collection[targetId],
-            },
-          },
-        }
-      );
-
-      if (response.collectionUpdate.userErrors?.length > 0) {
-        throw new Error(response.collectionUpdate.userErrors[0].message);
-      }
-
-      logger.info(
-        `Successfully updated collection ${handle} in ${targetEnvironment}`
-      );
-    } else {
-      // Collection doesn't exist in target environment, use create mutation
-      const response = await shopifyApi.post<CollectionCreateResponse>(
-        targetEnvironment,
-        {
-          query: print(CREATE_COLLECTION_MUTATION),
-          variables: { input },
-        }
-      );
-
-      if (response.collectionCreate.userErrors?.length > 0) {
-        throw new Error(response.collectionCreate.userErrors[0].message);
-      }
-
-      logger.info(
-        `Successfully created collection ${handle} in ${targetEnvironment}`
-      );
-    }
-  } catch (err) {
-    logger.error(
-      `Failed to sync collection ${handle} to ${targetEnvironment}:`,
-      err
-    );
-    throw err;
-  }
-}
 
 export const useCollectionsSyncStore = create<CollectionsSyncStore>(
   (set, get) => ({
@@ -545,8 +66,6 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
           } else if (
             productionCollection.updatedAt !== stagingCollection.updatedAt
           ) {
-            // Fetch and compare detailed collection data
-            logger.info(`Detailed comparison needed for ${handle}`);
             const [productionDetails, stagingDetails] = await Promise.all([
               fetchCollectionDetails('production', productionCollection.id),
               fetchCollectionDetails('staging', stagingCollection.id),
@@ -595,15 +114,12 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
           targetEnvironment === 'production' ? 'staging' : 'production';
 
         // Process collections in chunks to avoid overwhelming the API
-        const chunkSize = 3; // Adjust based on API limits
+        const chunkSize = 3;
         for (let i = 0; i < handles.length; i += chunkSize) {
           const chunk = handles.slice(i, i + chunkSize);
-
-          // Process chunk in parallel
           await Promise.all(
             chunk.map(async (handle) => {
               try {
-                // Sync the collection
                 await syncCollectionToEnvironment(
                   handle,
                   sourceEnvironment,
@@ -615,14 +131,12 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
                   handle
                 );
                 if (collection) {
-                  // Update database
                   await collectionDb.setCollectionComparison({
                     ...collection,
                     differences: 'In sync',
                     compared_at: new Date().toISOString(),
                   });
 
-                  // Update state
                   set((state) => ({
                     collections: state.collections.map((c) =>
                       c.handle === handle
@@ -645,7 +159,6 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
             })
           );
 
-          // Update progress after each chunk
           set((state) => ({
             ...state,
             syncProgress: {
@@ -669,14 +182,9 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
     fetchCollectionDetails: async (id: string, environment: Environment) => {
       set({ isLoadingDetails: true, error: null });
       try {
-        const response = await shopifyApi.post<{
-          collection: DetailedCollection;
-        }>(environment, {
-          query: print(COLLECTION_DETAILS_QUERY),
-          variables: { id },
-        });
+        const collection = await fetchCollectionDetails(environment, id);
         set({
-          selectedCollection: response.collection,
+          selectedCollection: collection,
           isLoadingDetails: false,
         });
       } catch (err: any) {

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Environment } from '../types/sync';
+import { Environment } from '../types/environment';
 import { useSettingsStore } from '../stores/useSettingsStore';
 import SHOPIFY_PROXIES from '../../shopify_proxy.json';
 import { logger } from '../utils/logger';

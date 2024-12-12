@@ -7,12 +7,10 @@ import {
 } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Fragment, useEffect } from 'react';
-import {
-  CollectionComparison,
-  useCollectionsSyncStore,
-} from '../../stores/useCollectionsSyncStore';
+import { useCollectionsSyncStore } from '../../stores/useCollectionsSyncStore';
 import CollectionProducts from './CollectionProducts';
 import { formatDate } from '../../utils/formatDate';
+import { CollectionComparison } from '../../types/collection';
 
 interface CollectionDetailsPanelProps {
   isOpen: boolean;

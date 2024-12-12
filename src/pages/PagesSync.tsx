@@ -1,9 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Environment } from '../types/sync';
+import { Environment } from '../types/environment';
 import Notification from '../components/Notification';
 import PageDetailsPanel from '../components/PageDetails/PageDetailsPanel';
-import { PageComparison, usePagesSyncStore } from '../stores/usePagesSyncStore';
+import { usePagesSyncStore } from '../stores/usePagesSyncStore';
 import { SyncProgress } from '../components/SyncProgress';
+import { PageComparison } from '../types/page';
 
 function DifferenceBadge({ text }: { text: string }) {
   const getBadgeColor = (text: string) => {

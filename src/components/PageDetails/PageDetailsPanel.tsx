@@ -7,11 +7,9 @@ import {
 } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Fragment, useEffect } from 'react';
-import {
-  PageComparison,
-  usePagesSyncStore,
-} from '../../stores/usePagesSyncStore';
+import { usePagesSyncStore } from '../../stores/usePagesSyncStore';
 import { formatDate } from '../../utils/formatDate';
+import { PageComparison } from '../../types/page';
 
 interface PageDetailsPanelProps {
   isOpen: boolean;
