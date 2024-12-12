@@ -8,6 +8,7 @@ import {
   COLLECTION_DETAILS_QUERY,
   CREATE_COLLECTION_MUTATION,
   UPDATE_COLLECTION_MUTATION,
+  COLLECTION_ADD_PRODUCTS_MUTATION,
 } from '../graphql/collections';
 import { collectionDb } from './collectionDb';
 import { productDb } from './productDb';
@@ -39,6 +40,18 @@ interface CollectionUpdateResponse {
 
 interface CollectionCreateResponse {
   collectionCreate: {
+    collection: {
+      id: string;
+    } | null;
+    userErrors: Array<{
+      field: string[];
+      message: string;
+    }>;
+  };
+}
+
+interface CollectionAddProductsResponse {
+  collectionAddProducts: {
     collection: {
       id: string;
     } | null;
@@ -209,7 +222,7 @@ export async function syncCollectionToEnvironment(
       })
     );
 
-    // Prepare mutation input
+    // Prepare base collection input (without products)
     const input = {
       handle: sourceDetails.handle,
       title: sourceDetails.title,
@@ -223,8 +236,9 @@ export async function syncCollectionToEnvironment(
             src: sourceDetails.image.url,
           }
         : null,
-      products: targetProductIds,
     };
+
+    let targetCollectionId: string;
 
     if (collection[targetId]) {
       // Update existing collection
@@ -245,9 +259,7 @@ export async function syncCollectionToEnvironment(
         throw new Error(response.collectionUpdate.userErrors[0].message);
       }
 
-      logger.info(
-        `Successfully updated collection ${handle} in ${targetEnvironment}`
-      );
+      targetCollectionId = collection[targetId]!;
     } else {
       // Create new collection
       const response = await shopifyApi.post<CollectionCreateResponse>(
@@ -262,10 +274,50 @@ export async function syncCollectionToEnvironment(
         throw new Error(response.collectionCreate.userErrors[0].message);
       }
 
-      logger.info(
-        `Successfully created collection ${handle} in ${targetEnvironment}`
-      );
+      targetCollectionId = response.collectionCreate.collection!.id;
     }
+
+    // Handle products
+    if (targetProductIds.length > 0) {
+      // First, fetch existing products in the target collection
+      const targetCollection = await fetchCollectionDetails(
+        targetEnvironment,
+        targetCollectionId
+      );
+
+      // Filter out products that are already in the collection
+      const existingProductIds = new Set(
+        targetCollection.products.edges.map((edge) => edge.node.id)
+      );
+      const productsToAdd = targetProductIds.filter(
+        (id) => !existingProductIds.has(id)
+      );
+
+      // Add only new products
+      if (productsToAdd.length > 0) {
+        const addProductsResponse =
+          await shopifyApi.post<CollectionAddProductsResponse>(
+            targetEnvironment,
+            {
+              query: print(COLLECTION_ADD_PRODUCTS_MUTATION),
+              variables: {
+                id: targetCollectionId,
+                productIds: productsToAdd,
+              },
+            }
+          );
+
+        if (addProductsResponse.collectionAddProducts?.userErrors?.length > 0) {
+          throw new Error(
+            addProductsResponse.collectionAddProducts.userErrors[0].message
+          );
+        }
+      }
+    }
+
+    logger.info(
+      `Successfully synced collection ${handle} to ${targetEnvironment}`
+    );
   } catch (err) {
     logger.error(
       `Failed to sync collection ${handle} to ${targetEnvironment}:`,

@@ -83,3 +83,17 @@ export const CREATE_COLLECTION_MUTATION = gql`
     }
   }
 `;
+
+export const COLLECTION_ADD_PRODUCTS_MUTATION = gql`
+  mutation collectionAddProducts($id: ID!, $productIds: [ID!]!) {
+    collectionAddProducts(id: $id, productIds: $productIds) {
+      collection {
+        id
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`;
