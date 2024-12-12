@@ -17,6 +17,7 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
   isLoadingDetails: false,
   error: null,
   syncProgress: null,
+  compareProgress: null,
 
   fetchStoredPages: async () => {
     set({ isLoading: true, error: null });
@@ -47,6 +48,10 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
       ]);
 
       logger.info(`Total unique handles found: ${allHandles.size}`);
+
+      // Initialize progress
+      set({ compareProgress: { current: 0, total: allHandles.size } });
+      let processed = 0;
 
       for (const handle of allHandles) {
         const productionPage = productionMap.get(handle);
@@ -81,13 +86,19 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
           updated_at: (productionPage || stagingPage)!.updatedAt,
           compared_at: new Date().toISOString(),
         });
+
+        // Update progress
+        processed++;
+        set({
+          compareProgress: { current: processed, total: allHandles.size },
+        });
       }
 
       await get().fetchStoredPages();
       logger.info('Page comparison completed successfully');
-      set({ isLoading: false });
+      set({ isLoading: false, compareProgress: null });
     } catch (err: any) {
-      set({ error: err.message, isLoading: false });
+      set({ error: err.message, isLoading: false, compareProgress: null });
       logger.error('Failed to compare pages:', err);
     }
   },

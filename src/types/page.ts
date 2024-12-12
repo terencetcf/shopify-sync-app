@@ -49,6 +49,10 @@ export interface PagesSyncStore {
     current: number;
     total: number;
   } | null;
+  compareProgress: {
+    current: number;
+    total: number;
+  } | null;
   fetchStoredPages: () => Promise<void>;
   comparePages: () => Promise<void>;
   syncPages: (

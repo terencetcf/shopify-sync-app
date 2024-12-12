@@ -17,6 +17,7 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
   isLoadingDetails: false,
   error: null,
   syncProgress: null,
+  compareProgress: null,
 
   fetchStoredProducts: async () => {
     set({ isLoading: true, error: null });
@@ -49,6 +50,10 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
       ]);
 
       logger.info(`Total unique handles found: ${allHandles.size}`);
+
+      // Initialize progress
+      set({ compareProgress: { current: 0, total: allHandles.size } });
+      let processed = 0;
 
       for (const handle of allHandles) {
         const productionProduct = productionMap.get(handle);
@@ -83,13 +88,19 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
           updated_at: (productionProduct || stagingProduct)!.updatedAt,
           compared_at: new Date().toISOString(),
         });
+
+        // Update progress
+        processed++;
+        set({
+          compareProgress: { current: processed, total: allHandles.size },
+        });
       }
 
       await get().fetchStoredProducts();
       logger.info('Product comparison completed successfully');
-      set({ isLoading: false });
+      set({ isLoading: false, compareProgress: null });
     } catch (err: any) {
-      set({ error: err.message, isLoading: false });
+      set({ error: err.message, isLoading: false, compareProgress: null });
       logger.error('Failed to compare products:', err);
     }
   },

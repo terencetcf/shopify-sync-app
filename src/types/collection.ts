@@ -60,6 +60,10 @@ export interface CollectionsSyncStore {
     current: number;
     total: number;
   } | null;
+  compareProgress: {
+    current: number;
+    total: number;
+  } | null;
   fetchStoredCollections: () => Promise<void>;
   compareCollections: () => Promise<void>;
   syncCollections: (

@@ -2,9 +2,15 @@ interface SyncProgressProps {
   current: number;
   total: number;
   type: 'collections' | 'pages' | 'products';
+  message?: string;
 }
 
-export function SyncProgress({ current, total, type }: SyncProgressProps) {
+export function SyncProgress({
+  current,
+  total,
+  type,
+  message,
+}: SyncProgressProps) {
   const percentage = Math.round((current / total) * 100);
 
   return (
@@ -15,7 +21,7 @@ export function SyncProgress({ current, total, type }: SyncProgressProps) {
             <div className="h-2 w-2 bg-emerald-500 rounded-full"></div>
           </div>
           <span className="text-sm font-medium text-gray-200">
-            Syncing {type} ({current}/{total})
+            {message || `Syncing ${type} (${current}/${total})`}
           </span>
         </div>
         <span className="text-sm font-semibold text-emerald-400">

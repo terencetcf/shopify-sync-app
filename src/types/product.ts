@@ -104,6 +104,10 @@ export interface ProductsSyncStore {
     current: number;
     total: number;
   } | null;
+  compareProgress: {
+    current: number;
+    total: number;
+  } | null;
   fetchStoredProducts: () => Promise<void>;
   compareProducts: () => Promise<void>;
   syncProducts: (
