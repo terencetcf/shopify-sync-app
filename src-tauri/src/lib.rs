@@ -32,7 +32,7 @@ pub fn run() {
             description: "insert_settings_production_access_token",
             sql: "INSERT INTO settings (key, value) VALUES ('shopifyProductionAccessToken', '');",
             kind: MigrationKind::Up,
-        },             
+        },
         Migration {
             version: 4,
             description: "insert_settings_staging_url",
@@ -90,12 +90,23 @@ pub fn run() {
     ];
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_log::Builder::new().build())
+        .plugin(tauri_plugin_http::init())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .target(tauri_plugin_log::Target::new(
+                    tauri_plugin_log::TargetKind::LogDir {
+                        file_name: Some("logs".to_string()),
+                    },
+                ))
+                .build(),
+        )
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_sql::Builder::default()
-            .add_migrations("sqlite:settings.db", migrations)
-            .build())
+        .plugin(
+            tauri_plugin_sql::Builder::default()
+                .add_migrations("sqlite:settings.db", migrations)
+                .build(),
+        )
         .invoke_handler(tauri::generate_handler![greet])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

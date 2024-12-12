@@ -257,7 +257,7 @@ export default function ProductsSync() {
               {isLoading && (
                 <div className="fixed inset-x-0 top-1/2 transform -translate-y-1/2 flex flex-col items-center justify-center space-y-4 z-50">
                   <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                  <p className="text-sm font-medium text-gray-200 px-4 py-2 rounded-md shadow-lg">
+                  <p className="text-sm font-medium text-gray-200 px-4 py-2 rounded-md shadow-lg bg-gray-900/50">
                     {selectedHandles.size > 0
                       ? 'Syncing...'
                       : 'Retrieving data from servers...'}

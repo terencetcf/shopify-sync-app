@@ -3,6 +3,8 @@ import { Environment } from '../types/environment';
 import { useSettingsStore } from '../stores/useSettingsStore';
 import SHOPIFY_PROXIES from '../../shopify_proxy.json';
 import { logger } from '../utils/logger';
+import { fetch } from '@tauri-apps/plugin-http';
+import { deviceIdentifier } from '../utils/deviceIdentifier';
 
 interface ShopifyRequestData {
   query: string;
@@ -17,6 +19,7 @@ interface ShopifyResponse<T> {
 }
 
 const proxyUrlReplacer = (url: string) => {
+  if (!deviceIdentifier.isWeb) return url;
   const found = SHOPIFY_PROXIES.find((proxy) => url.includes(proxy.target));
   return found ? url.replace(found.target, `${found.path}`) : url;
 };
@@ -37,10 +40,51 @@ const getEnvironmentConfig = (environment: Environment) => {
   }[environment];
 };
 
-function isRetryableError(error: any): boolean {
+const handleShopifyErrors = (errors: any[]) => {
+  if (errors?.length) {
+    throw new Error(
+      `Server returned the following errors: ` +
+        errors.map((e) => `"${e.message}"`).join(', ')
+    );
+  }
+};
+
+const makeRequest = async <T>(
+  envConfig: ReturnType<typeof getEnvironmentConfig>,
+  data: ShopifyRequestData
+): Promise<T> => {
+  if (deviceIdentifier.isWeb) {
+    const response = await axios<ShopifyResponse<T>>({
+      url: envConfig.url,
+      headers: {
+        'X-Shopify-Access-Token': envConfig.accessToken,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+      data,
+    });
+
+    handleShopifyErrors(response.data.errors);
+    return response.data.data;
+  }
+
+  const response = await fetch(envConfig.url, {
+    method: 'POST',
+    headers: {
+      'X-Shopify-Access-Token': envConfig.accessToken,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  const jsonResponse = await response.json();
+  handleShopifyErrors(jsonResponse.errors);
+  return jsonResponse.data;
+};
+
+const isRetryableError = (error: any): boolean => {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
-    // Retry on rate limits (429), server errors (500s), and network errors
     return (
       status === 429 ||
       (status && status >= 500 && status < 600) ||
@@ -48,8 +92,29 @@ function isRetryableError(error: any): boolean {
       error.code === 'ECONNABORTED'
     );
   }
+
+  if (error.response) {
+    const status = error.response.status;
+    return status === 429 || (status >= 500 && status < 600);
+  }
+
   return false;
-}
+};
+
+const handleFinalError = (error: Error) => {
+  if (axios.isAxiosError(error)) {
+    logger.error('Final API attempt failed:', error);
+    if (error.response?.status === 404 || error.code === 'ERR_NETWORK') {
+      throw new Error('The requested URL is invalid');
+    }
+    if (error.response?.status === 401) {
+      throw new Error(
+        'Unauthorized access, the provided access token is invalid'
+      );
+    }
+  }
+  throw error;
+};
 
 async function retryablePost<T>(
   environment: Environment,
@@ -62,24 +127,7 @@ async function retryablePost<T>(
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const response = await axios<ShopifyResponse<T>>({
-        url: envConfig.url,
-        headers: {
-          'X-Shopify-Access-Token': envConfig.accessToken,
-          'Content-Type': 'application/json',
-        },
-        method: 'POST',
-        data,
-      });
-
-      if (response.data.errors?.length) {
-        throw new Error(
-          `Server returned the following errors: ` +
-            response.data.errors.map((e) => `"${e.message}"`).join(', ')
-        );
-      }
-
-      return response.data.data;
+      return await makeRequest<T>(envConfig, data);
     } catch (error: any) {
       lastError = error;
 
@@ -87,7 +135,6 @@ async function retryablePost<T>(
         break;
       }
 
-      // Exponential backoff with jitter
       const delay =
         baseDelay * Math.pow(2, attempt - 1) * (0.5 + Math.random() * 0.5);
       logger.warn(
@@ -100,22 +147,7 @@ async function retryablePost<T>(
     }
   }
 
-  // Handle the final error
-  if (axios.isAxiosError(lastError)) {
-    logger.error('Final API attempt failed:', lastError);
-    if (
-      lastError.response?.status === 404 ||
-      lastError.code === 'ERR_NETWORK'
-    ) {
-      throw new Error('The requested URL is invalid');
-    } else if (lastError.response?.status === 401) {
-      throw new Error(
-        'Unauthorized access, the provided access token is invalid'
-      );
-    }
-  }
-
-  throw lastError;
+  return handleFinalError(lastError!);
 }
 
 export const shopifyApi = {
