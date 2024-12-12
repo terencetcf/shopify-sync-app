@@ -11,6 +11,9 @@ interface ShopifyRequestData {
 
 interface ShopifyResponse<T> {
   data: T;
+  errors: {
+    message: string;
+  }[];
 }
 
 const proxyUrlReplacer = (url: string) => {
@@ -51,6 +54,13 @@ export const shopifyApi = {
         method: 'POST',
         data,
       });
+
+      if (response.data.errors?.length) {
+        throw new Error(
+          `Server returned the following errors: "` +
+            response.data.errors.map((e) => `"${e.message}"`).join(`,`)
+        );
+      }
 
       return response.data.data;
     } catch (error) {

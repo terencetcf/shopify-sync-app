@@ -1,6 +1,6 @@
-import Database from '@tauri-apps/plugin-sql';
 import { deviceIdentifier } from '../utils/deviceIdentifier';
 import { PageComparison } from '../stores/usePagesSyncStore';
+import AppDb from './AppDb';
 
 export const pageDb = {
   getPageComparisons: async (): Promise<PageComparison[]> => {
@@ -12,8 +12,7 @@ export const pageDb = {
       return [];
     }
 
-    const db = await Database.load('sqlite:settings.db');
-    const result = await db.select<PageComparison[]>(
+    const result = await AppDb.select<PageComparison[]>(
       'SELECT * FROM pages ORDER BY handle ASC'
     );
 
@@ -21,8 +20,17 @@ export const pageDb = {
   },
 
   getPageComparison: async (handle: string): Promise<PageComparison | null> => {
-    const pages = await pageDb.getPageComparisons();
-    return pages.find((p) => p.handle === handle) ?? null;
+    if (deviceIdentifier.isWeb) {
+      const pages = await pageDb.getPageComparisons();
+      return pages.find((p) => p.handle === handle) ?? null;
+    }
+
+    const [result] = await AppDb.select<PageComparison[]>(
+      'SELECT * FROM pages WHERE handle = $1',
+      [handle]
+    );
+
+    return result;
   },
 
   setPageComparison: async (page: PageComparison) => {
@@ -39,8 +47,7 @@ export const pageDb = {
       return;
     }
 
-    const db = await Database.load('sqlite:settings.db');
-    await db.execute(
+    await AppDb.execute(
       `INSERT INTO pages (
         handle,
         production_id,
@@ -59,8 +66,8 @@ export const pageDb = {
         compared_at = CURRENT_TIMESTAMP`,
       [
         page.handle,
-        page.production_id || null,
-        page.staging_id || null,
+        page.production_id ?? null,
+        page.staging_id ?? null,
         page.title,
         page.differences,
         page.updated_at,

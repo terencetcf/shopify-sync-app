@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import Database from '@tauri-apps/plugin-sql';
 import { deviceIdentifier } from '../utils/deviceIdentifier';
 import { logger } from '../utils/logger';
+import AppDb from '../services/AppDb';
 
 interface Settings {
   shopifyProductionStoreUrl: string;
@@ -17,8 +17,6 @@ interface SettingsStore {
   initialize: () => Promise<void>;
   updateSettings: (settings: Settings) => Promise<void>;
 }
-
-let db: Database | null = null;
 
 export const useSettingsStore = create<SettingsStore>((set) => ({
   settings: null,
@@ -46,11 +44,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     }
 
     try {
-      // Initialize database connection
-      db = await Database.load('sqlite:settings.db');
-
       // Get all settings
-      const result: { key: string; value: string }[] = await db.select(
+      const result: { key: string; value: string }[] = await AppDb.select(
         'SELECT key, value FROM settings'
       );
 
@@ -73,11 +68,9 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   updateSettings: async (newSettings: Settings) => {
     set({ isLoading: true, error: null });
     try {
-      if (!db) throw new Error('Database not initialized');
-
       // Update each setting
       for (const [key, value] of Object.entries(newSettings)) {
-        await db.execute(
+        await AppDb.execute(
           `INSERT INTO settings (key, value) 
            VALUES ($1, $2)
            ON CONFLICT(key) DO UPDATE SET 

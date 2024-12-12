@@ -4,14 +4,18 @@ import { useSettingsStore } from '../stores/useSettingsStore';
 export default function Settings() {
   const { settings, updateSettings, isLoading, error } = useSettingsStore();
   const [formData, setFormData] = useState({
-    shopifyProductionStoreUrl: '',
-    shopifyProductionAccessToken: '',
-    shopifyStagingStoreUrl: '',
-    shopifyStagingAccessToken: '',
+    shopifyProductionStoreUrl:
+      import.meta.env.VITE_SHOPIFY_PRODUCTION_URL ?? '',
+    shopifyProductionAccessToken:
+      import.meta.env.VITE_SHOPIFY_PRODUCTION_ACCESS_TOKEN ?? '',
+    shopifyStagingStoreUrl:
+      import.meta.env.VITE_SHOPIFY_STAGING_STORE_URL ?? '',
+    shopifyStagingAccessToken:
+      import.meta.env.VITE_SHOPIFY_STAGING_ACCESS_TOKEN ?? '',
   });
 
   useEffect(() => {
-    if (settings) {
+    if (settings && Object.values(settings).every((s) => !!s)) {
       setFormData(settings);
     }
   }, [settings]);

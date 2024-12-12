@@ -6,5 +6,9 @@
   {
     "target": "https://shoptest-shakerdoors-co-uk.myshopify.com",
     "path": "/staging"
+  },
+  {
+    "target": "https://ddctpp-dj.myshopify.com",
+    "path": "/staging"
   }
 ]

@@ -49,15 +49,13 @@ pub fn run() {
             version: 6,
             description: "create_collections_table",
             sql: "CREATE TABLE IF NOT EXISTS collections (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                handle TEXT NOT NULL,
+                handle TEXT PRIMARY KEY,
                 production_id TEXT,
                 staging_id TEXT,
                 title TEXT NOT NULL,
                 differences TEXT,
                 updated_at TIMESTAMP NOT NULL,
-                compared_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(handle)
+                compared_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );",
             kind: MigrationKind::Up,
         },
@@ -65,31 +63,27 @@ pub fn run() {
             version: 7,
             description: "create_pages_table",
             sql: "CREATE TABLE IF NOT EXISTS pages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                handle TEXT NOT NULL,
+                handle TEXT PRIMARY KEY,
                 production_id TEXT,
                 staging_id TEXT,
                 title TEXT NOT NULL,
                 differences TEXT,
                 updated_at TIMESTAMP NOT NULL,
-                compared_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(handle)
+                compared_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );",
             kind: MigrationKind::Up,
         },
         Migration {
             version: 8,
             description: "create_products_table",
-            sql: "CREATE TABLE IF NOT EXISTS pages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                handle TEXT NOT NULL,
+            sql: "CREATE TABLE IF NOT EXISTS products (
+                handle TEXT PRIMARY KEY,
                 production_id TEXT,
                 staging_id TEXT,
                 title TEXT NOT NULL,
                 differences TEXT,
                 updated_at TIMESTAMP NOT NULL,
-                compared_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(handle)
+                compared_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );",
             kind: MigrationKind::Up,
         },

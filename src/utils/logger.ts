@@ -1,14 +1,22 @@
 import { info, error } from '@tauri-apps/plugin-log';
 import { deviceIdentifier } from './deviceIdentifier';
 
+const formatMessage = (message: string, ...params: any) => {
+  if (params.length === 0) {
+    return message;
+  }
+
+  return `${message} Extra: ${JSON.stringify(params)}`;
+};
+
 export const logger = {
   info: (message: string, ...params: any) => {
     if (deviceIdentifier.isWeb) {
-      console.log(message, params);
+      params.length ? console.log(message, params) : console.log(message);
       return;
     }
 
-    info(message + ` Extras: ${JSON.stringify(params)}`);
+    info(formatMessage(message, params));
   },
   error: (message: string, ...params: any) => {
     if (deviceIdentifier.isWeb) {
@@ -16,6 +24,6 @@ export const logger = {
       return;
     }
 
-    error(message + ` Extras: ${JSON.stringify(params)}`);
+    error(formatMessage(message, params));
   },
 };

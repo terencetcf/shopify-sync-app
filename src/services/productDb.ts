@@ -1,6 +1,6 @@
-import Database from '@tauri-apps/plugin-sql';
 import { deviceIdentifier } from '../utils/deviceIdentifier';
 import { ProductComparison } from '../stores/useProductsSyncStore';
+import AppDb from './AppDb';
 
 export const productDb = {
   getProductComparisons: async (): Promise<ProductComparison[]> => {
@@ -12,8 +12,7 @@ export const productDb = {
       return [];
     }
 
-    const db = await Database.load('sqlite:settings.db');
-    const result = await db.select<ProductComparison[]>(
+    const result = await AppDb.select<ProductComparison[]>(
       'SELECT * FROM products ORDER BY handle ASC'
     );
 
@@ -23,8 +22,17 @@ export const productDb = {
   getProductComparison: async (
     handle: string
   ): Promise<ProductComparison | null> => {
-    const products = await productDb.getProductComparisons();
-    return products.find((p) => p.handle === handle) ?? null;
+    if (deviceIdentifier.isWeb) {
+      const products = await productDb.getProductComparisons();
+      return products.find((p) => p.handle === handle) ?? null;
+    }
+
+    const [result] = await AppDb.select<ProductComparison[]>(
+      'SELECT * FROM products WHERE handle = $1',
+      [handle]
+    );
+
+    return result;
   },
 
   setProductComparison: async (product: ProductComparison) => {
@@ -41,8 +49,7 @@ export const productDb = {
       return;
     }
 
-    const db = await Database.load('sqlite:settings.db');
-    await db.execute(
+    await AppDb.execute(
       `INSERT INTO products (
         handle,
         production_id,

@@ -6,6 +6,7 @@ import { PageInfo } from '../types/pageInfo';
 import { collectionDb } from '../services/collectionDb';
 import gql from 'graphql-tag';
 import { print } from 'graphql';
+import { productDb } from '../services/productDb';
 
 interface ShopifyCollection {
   id: string;
@@ -15,7 +16,6 @@ interface ShopifyCollection {
 }
 
 export interface CollectionComparison {
-  id: string;
   handle: string;
   production_id: string | null;
   staging_id: string | null;
@@ -97,6 +97,17 @@ interface DetailedShopifyCollection extends ShopifyCollection {
   seo: {
     title: string | null;
     description: string | null;
+  };
+  products: {
+    edges: Array<{
+      node: {
+        id: string;
+        title: string;
+        handle: string;
+        status: string;
+        totalInventory: number;
+      };
+    }>;
   };
 }
 
@@ -288,22 +299,47 @@ async function compareCollectionDetails(
   // Compare basic fields
   if (productionCollection.title !== stagingCollection.title) {
     differences.push('Title mismatch');
+    logger.info(
+      'Title mismatch',
+      productionCollection.title,
+      stagingCollection.title
+    );
   }
   if (productionCollection.description !== stagingCollection.description) {
     differences.push('Description mismatch');
+    logger.info(
+      'Description mismatch',
+      productionCollection.description,
+      stagingCollection.description
+    );
   }
   if (
     productionCollection.descriptionHtml !== stagingCollection.descriptionHtml
   ) {
     differences.push('HTML description mismatch');
+    logger.info(
+      'HTML description mismatch',
+      productionCollection.descriptionHtml,
+      stagingCollection.descriptionHtml
+    );
   }
   if (productionCollection.sortOrder !== stagingCollection.sortOrder) {
     differences.push('Sort order mismatch');
+    logger.info(
+      'Sort order mismatch',
+      productionCollection.sortOrder,
+      stagingCollection.sortOrder
+    );
   }
   if (
     productionCollection.templateSuffix !== stagingCollection.templateSuffix
   ) {
     differences.push('Template suffix mismatch');
+    logger.info(
+      'Template suffix mismatch',
+      productionCollection.templateSuffix,
+      stagingCollection.templateSuffix
+    );
   }
 
   // Compare image alt text
@@ -311,16 +347,31 @@ async function compareCollectionDetails(
     productionCollection.image?.altText !== stagingCollection.image?.altText
   ) {
     differences.push('Image alt text mismatch');
+    logger.info(
+      'Image alt text mismatch',
+      productionCollection.image?.altText,
+      stagingCollection.image?.altText
+    );
   }
 
   // Compare SEO fields
   if (productionCollection.seo?.title !== stagingCollection.seo?.title) {
     differences.push('SEO title mismatch');
+    logger.info(
+      'SEO title mismatch',
+      productionCollection.seo?.title,
+      stagingCollection.seo?.title
+    );
   }
   if (
     productionCollection.seo?.description !== stagingCollection.seo?.description
   ) {
     differences.push('SEO description mismatch');
+    logger.info(
+      'SEO description mismatch',
+      productionCollection.seo?.description,
+      stagingCollection.seo?.description
+    );
   }
 
   return differences;
@@ -332,17 +383,11 @@ async function syncCollectionToEnvironment(
   targetEnvironment: Environment
 ): Promise<void> {
   try {
-    // Get collection details from source environment
     const sourceId =
       sourceEnvironment === 'production' ? 'production_id' : 'staging_id';
     const targetId =
       sourceEnvironment === 'production' ? 'staging_id' : 'production_id';
 
-    // const db = await Database.load('sqlite:settings.db');
-    // const [collection] = await db.select<CollectionComparison[]>(
-    //   `SELECT * FROM collections WHERE handle = $1`,
-    //   [handle]
-    // );
     const collection = await collectionDb.getCollectionComparison(handle);
 
     if (!collection || !collection[sourceId]) {
@@ -354,6 +399,26 @@ async function syncCollectionToEnvironment(
       sourceEnvironment,
       collection[sourceId]
     );
+
+    // Get product IDs from source collection
+    const sourceProductHandles = sourceDetails.products.edges.map(
+      ({ node }) => node.handle
+    );
+
+    // Get corresponding target product IDs
+    const targetProductIds: string[] = [];
+    for (const productHandle of sourceProductHandles) {
+      const productComparison = await productDb.getProductComparison(
+        productHandle
+      );
+      if (productComparison?.[targetId]) {
+        targetProductIds.push(productComparison[targetId]!);
+      } else {
+        throw new Error(
+          `Product ${productHandle} not found in ${targetEnvironment}!`
+        );
+      }
+    }
 
     // Prepare mutation variables
     const input = {
@@ -369,6 +434,7 @@ async function syncCollectionToEnvironment(
             src: sourceDetails.image.url,
           }
         : null,
+      products: targetProductIds, // Add products to mutation input
     };
 
     if (collection[targetId]) {
@@ -491,7 +557,6 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
           }
 
           await collectionDb.setCollectionComparison({
-            id: '',
             handle,
             production_id: productionCollection?.id ?? null,
             staging_id: stagingCollection?.id ?? null,
@@ -519,10 +584,6 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
       try {
         const sourceEnvironment =
           targetEnvironment === 'production' ? 'staging' : 'production';
-        const sourceIdField =
-          sourceEnvironment === 'production' ? 'production_id' : 'staging_id';
-        const targetIdField =
-          targetEnvironment === 'production' ? 'production_id' : 'staging_id';
 
         for (const handle of handles) {
           // Sync the collection
@@ -538,7 +599,6 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
             // Update database
             await collectionDb.setCollectionComparison({
               ...collection,
-              [targetIdField]: collection[sourceIdField],
               differences: 'In sync',
               compared_at: new Date().toISOString(),
             });
@@ -549,7 +609,6 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
                 c.handle === handle
                   ? {
                       ...c,
-                      [targetIdField]: c[sourceIdField],
                       differences: 'In sync',
                       compared_at: new Date().toISOString(),
                     }

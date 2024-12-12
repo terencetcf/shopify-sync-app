@@ -1,6 +1,6 @@
-import Database from '@tauri-apps/plugin-sql';
 import { deviceIdentifier } from '../utils/deviceIdentifier';
 import { CollectionComparison } from '../stores/useCollectionsSyncStore';
+import AppDb from './AppDb';
 
 const getCollectionComparisons = async (): Promise<CollectionComparison[]> => {
   if (deviceIdentifier.isWeb) {
@@ -12,8 +12,7 @@ const getCollectionComparisons = async (): Promise<CollectionComparison[]> => {
     return [];
   }
 
-  const db = await Database.load('sqlite:settings.db');
-  const result = await db.select<CollectionComparison[]>(
+  const result = await AppDb.select<CollectionComparison[]>(
     'SELECT * FROM collections ORDER BY handle ASC'
   );
 
@@ -23,8 +22,17 @@ const getCollectionComparisons = async (): Promise<CollectionComparison[]> => {
 const getCollectionComparison = async (
   handle: string
 ): Promise<CollectionComparison | null> => {
-  const collections = await getCollectionComparisons();
-  return collections.find((c) => c.handle === handle) ?? null;
+  if (deviceIdentifier.isWeb) {
+    const collections = await getCollectionComparisons();
+    return collections.find((c) => c.handle === handle) ?? null;
+  }
+
+  const [result] = await AppDb.select<CollectionComparison[]>(
+    'SELECT * FROM collections WHERE handle = $1',
+    [handle]
+  );
+
+  return result;
 };
 
 const setCollectionComparison = async (collection: CollectionComparison) => {
@@ -42,8 +50,7 @@ const setCollectionComparison = async (collection: CollectionComparison) => {
     return;
   }
 
-  const db = await Database.load('sqlite:settings.db');
-  await db.execute(
+  await AppDb.execute(
     `INSERT INTO collections (
             handle,
             production_id,

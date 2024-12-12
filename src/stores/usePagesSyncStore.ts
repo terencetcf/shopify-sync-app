@@ -15,7 +15,6 @@ interface ShopifyPage {
 }
 
 export interface PageComparison {
-  id: string;
   handle: string;
   production_id: string | null;
   staging_id: string | null;
@@ -261,22 +260,29 @@ async function comparePageDetails(
 ): Promise<string[]> {
   const differences: string[] = [];
 
-  // Compare basic fields
   if (productionPage.title !== stagingPage.title) {
     differences.push('Title mismatch');
+    logger.info('Title mismatch', productionPage.title, stagingPage.title);
   }
   if (productionPage.body !== stagingPage.body) {
     differences.push('Body mismatch');
-    if (productionPage.handle === 'accessories') {
-      logger.info('Body mismatch PROD:', productionPage.body);
-      logger.info('Body mismatch STAG:', stagingPage.body);
-    }
+    logger.info('Body mismatch', productionPage.body, stagingPage.body);
   }
   if (productionPage.isPublished !== stagingPage.isPublished) {
     differences.push('Published status mismatch');
+    logger.info(
+      'isPublished mismatch',
+      productionPage.isPublished,
+      stagingPage.isPublished
+    );
   }
   if (productionPage.templateSuffix !== stagingPage.templateSuffix) {
     differences.push('Template suffix mismatch');
+    logger.info(
+      'Template suffix mismatch',
+      productionPage.templateSuffix,
+      stagingPage.templateSuffix
+    );
   }
 
   // Compare metafields
@@ -295,10 +301,20 @@ async function comparePageDetails(
 
   if (productionMetafields.size !== stagingMetafields.size) {
     differences.push('Metafields count mismatch');
+    logger.info(
+      'Metafields count mismatch',
+      productionMetafields.size,
+      stagingMetafields.size
+    );
   } else {
     for (const [key, value] of productionMetafields) {
       if (stagingMetafields.get(key) !== value) {
         differences.push('Metafields content mismatch');
+        logger.info(
+          'Metafields content mismatch',
+          stagingMetafields.get(key),
+          value
+        );
         break;
       }
     }
@@ -440,7 +456,6 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
           differences = ['Missing in staging'];
         } else if (productionPage.updatedAt !== stagingPage.updatedAt) {
           // Fetch and compare detailed page data
-          logger.info(`Detailed comparison needed for ${handle}`);
           const [productionDetails, stagingDetails] = await Promise.all([
             fetchPageDetails('production', productionPage.id),
             fetchPageDetails('staging', stagingPage.id),
@@ -455,7 +470,6 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
         }
 
         await pageDb.setPageComparison({
-          id: '',
           handle,
           production_id: productionPage?.id ?? null,
           staging_id: stagingPage?.id ?? null,
@@ -480,10 +494,6 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
     try {
       const sourceEnvironment =
         targetEnvironment === 'production' ? 'staging' : 'production';
-      const sourceIdField =
-        sourceEnvironment === 'production' ? 'production_id' : 'staging_id';
-      const targetIdField =
-        targetEnvironment === 'production' ? 'production_id' : 'staging_id';
 
       for (const handle of handles) {
         // Sync the page
@@ -499,7 +509,6 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
           // Update database
           await pageDb.setPageComparison({
             ...page,
-            [targetIdField]: page[sourceIdField],
             differences: 'In sync',
             compared_at: new Date().toISOString(),
           });
@@ -510,7 +519,6 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
               p.handle === handle
                 ? {
                     ...p,
-                    [targetIdField]: p[sourceIdField],
                     differences: 'In sync',
                     compared_at: new Date().toISOString(),
                   }

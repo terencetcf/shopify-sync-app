@@ -234,8 +234,8 @@ export default function PagesSync() {
               {isLoading && (
                 <div className="fixed inset-x-0 top-1/2 transform -translate-y-1/2 flex flex-col items-center justify-center space-y-4 z-50">
                   <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                  <p className="text-sm font-medium text-gray-200 bg-gray-800 px-4 py-2 rounded-md shadow-lg">
-                    {selectedHandles.size > 0 ? 'Syncing...' : 'Comparing...'}
+                  <p className="text-sm font-medium text-gray-200 px-4 py-2 rounded-md shadow-lg">
+                    {selectedHandles.size > 0 ? 'Syncing...' : 'Updating...'}
                   </p>
                 </div>
               )}

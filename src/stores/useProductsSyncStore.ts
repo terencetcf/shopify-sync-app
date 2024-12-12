@@ -14,7 +14,6 @@ interface ShopifyProduct {
 }
 
 export interface ProductComparison {
-  id: string;
   handle: string;
   production_id: string | null;
   staging_id: string | null;
@@ -217,15 +216,14 @@ const PRODUCT_DETAILS_QUERY = gql`
 `;
 
 const CREATE_PRODUCT_MUTATION = gql`
-  mutation CreateProduct($input: ProductInput!) {
-    productCreate(input: $input) {
+  mutation CreateProduct($input: ProductInput!, $media: [CreateMediaInput!]) {
+    productCreate(input: $input, media: $media) {
       product {
         id
         title
         handle
       }
       userErrors {
-        code
         field
         message
       }
@@ -234,15 +232,14 @@ const CREATE_PRODUCT_MUTATION = gql`
 `;
 
 const UPDATE_PRODUCT_MUTATION = gql`
-  mutation UpdateProduct($input: ProductInput!) {
-    productUpdate(input: $input) {
+  mutation UpdateProduct($input: ProductInput!, $media: [CreateMediaInput!]) {
+    productUpdate(input: $input, media: $media) {
       product {
         id
         title
         handle
       }
       userErrors {
-        code
         field
         message
       }
@@ -331,17 +328,49 @@ async function compareProductDetails(
 ): Promise<string[]> {
   const differences: string[] = [];
 
-  // Compare basic fields
-  if (productionProduct.title !== stagingProduct.title)
+  logger.info(
+    `Comparing product (${productionProduct.handle}) fields differences...`
+  );
+  if (productionProduct.title !== stagingProduct.title) {
     differences.push('Title');
-  if (productionProduct.description !== stagingProduct.description)
+    logger.info(
+      'Title mismatch',
+      productionProduct.title,
+      stagingProduct.title
+    );
+  }
+  if (productionProduct.description !== stagingProduct.description) {
     differences.push('Description');
-  if (productionProduct.status !== stagingProduct.status)
+    logger.info(
+      'Description mismatch',
+      productionProduct.description,
+      stagingProduct.description
+    );
+  }
+  if (productionProduct.status !== stagingProduct.status) {
     differences.push('Status');
-  if (productionProduct.vendor !== stagingProduct.vendor)
+    logger.info(
+      'Status mismatch',
+      productionProduct.status,
+      stagingProduct.status
+    );
+  }
+  if (productionProduct.vendor.trim() !== stagingProduct.vendor.trim()) {
     differences.push('Vendor');
-  if (productionProduct.productType !== stagingProduct.productType)
+    logger.info(
+      'Vendor mismatch',
+      productionProduct.vendor,
+      stagingProduct.vendor
+    );
+  }
+  if (productionProduct.productType !== stagingProduct.productType) {
     differences.push('Product Type');
+    logger.info(
+      'Product Type mismatch',
+      productionProduct.productType,
+      stagingProduct.productType
+    );
+  }
 
   // Compare tags
   if (
@@ -349,35 +378,36 @@ async function compareProductDetails(
     JSON.stringify(stagingProduct.tags.sort())
   ) {
     differences.push('Tags');
+    logger.info('Tags mismatch', productionProduct.tags, stagingProduct.tags);
   }
 
   // Compare variants
-  const productionVariants = new Map(
-    productionProduct.variants.edges.map(({ node }) => [node.sku, node])
-  );
-  const stagingVariants = new Map(
-    stagingProduct.variants.edges.map(({ node }) => [node.sku, node])
-  );
+  // const productionVariants = new Map(
+  //   productionProduct.variants.edges.map(({ node }) => [node.sku, node])
+  // );
+  // const stagingVariants = new Map(
+  //   stagingProduct.variants.edges.map(({ node }) => [node.sku, node])
+  // );
 
-  if (productionVariants.size !== stagingVariants.size) {
-    differences.push('Variants Count');
-  } else {
-    for (const [sku, prodVariant] of productionVariants) {
-      const stageVariant = stagingVariants.get(sku);
-      if (!stageVariant) {
-        differences.push('Variants');
-        break;
-      }
-      if (
-        prodVariant.price !== stageVariant.price ||
-        prodVariant.compareAtPrice !== stageVariant.compareAtPrice ||
-        prodVariant.inventoryQuantity !== stageVariant.inventoryQuantity
-      ) {
-        differences.push('Variant Details');
-        break;
-      }
-    }
-  }
+  // if (productionVariants.size !== stagingVariants.size) {
+  //   differences.push('Variants Count');
+  // } else {
+  //   for (const [sku, prodVariant] of productionVariants) {
+  //     const stageVariant = stagingVariants.get(sku);
+  //     if (!stageVariant) {
+  //       differences.push('Variants');
+  //       break;
+  //     }
+  //     if (
+  //       prodVariant.price !== stageVariant.price ||
+  //       prodVariant.compareAtPrice !== stageVariant.compareAtPrice ||
+  //       prodVariant.inventoryQuantity !== stageVariant.inventoryQuantity
+  //     ) {
+  //       differences.push('Variant Details');
+  //       break;
+  //     }
+  //   }
+  // }
 
   // Compare metafields
   const productionMetafields = new Map(
@@ -395,10 +425,20 @@ async function compareProductDetails(
 
   if (productionMetafields.size !== stagingMetafields.size) {
     differences.push('Metafields Count');
+    logger.info(
+      'Metafields count mismatch',
+      productionMetafields.size,
+      stagingMetafields.size
+    );
   } else {
     for (const [key, value] of productionMetafields) {
       if (stagingMetafields.get(key) !== value) {
         differences.push('Metafields Content');
+        logger.info(
+          'Metafields content mismatch',
+          stagingMetafields.get(key),
+          value
+        );
         break;
       }
     }
@@ -458,8 +498,6 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
         } else if (!stagingProduct) {
           differences = ['Missing in staging'];
         } else if (productionProduct.updatedAt !== stagingProduct.updatedAt) {
-          // Fetch and compare detailed product data
-          logger.info(`Detailed comparison needed for ${handle}`);
           const [productionDetails, stagingDetails] = await Promise.all([
             fetchProductDetails('production', productionProduct.id),
             fetchProductDetails('staging', stagingProduct.id),
@@ -474,7 +512,6 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
         }
 
         await productDb.setProductComparison({
-          id: '',
           handle,
           production_id: productionProduct?.id ?? null,
           staging_id: stagingProduct?.id ?? null,
@@ -514,10 +551,14 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
         }
 
         // Fetch source product details
+        logger.info(
+          `👓 Retrieving product (${product.handle}) details from ${sourceEnvironment}...`
+        );
         const sourceDetails = await fetchProductDetails(
           sourceEnvironment,
           product[sourceIdField]!
         );
+        logger.info('product:', sourceDetails, targetIdField, product);
 
         // Prepare mutation input
         const input = {
@@ -528,20 +569,33 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
           productType: sourceDetails.productType,
           status: sourceDetails.status,
           tags: sourceDetails.tags,
-          variants: sourceDetails.variants.edges.map(({ node }) => ({
-            sku: node.sku,
-            price: node.price,
-            compareAtPrice: node.compareAtPrice,
-            inventoryQuantity: node.inventoryQuantity,
-          })),
+          category: sourceDetails.category,
+          templateSuffix: sourceDetails.templateSuffix,
           metafields: sourceDetails.metafields.edges.map(({ node }) => ({
             namespace: node.namespace,
             key: node.key,
             value: node.value,
             type: node.type,
           })),
+
+          giftCardTemplateSuffix: sourceDetails.giftCardTemplateSuffix,
+          requiresSellingPlan: sourceDetails.requiresSellingPlan,
+          seo: sourceDetails.seo,
         };
 
+        // TODO: add this back when not sync against trial store
+        // const media =
+        //   sourceDetails.media?.edges
+        //     .filter(({ node }) => !!node.preview?.image?.url?.length)
+        //     .map(({ node }) => ({
+        //       mediaContentType: node.mediaContentType,
+        //       alt: node.preview?.image?.altText,
+        //       originalSource: node.preview?.image?.url,
+        //     })) ?? [];
+
+        logger.info(
+          `📋 Syncing product (${product.handle}) to ${targetEnvironment}...`
+        );
         if (product[targetIdField]) {
           // Update existing product
           await shopifyApi.post(targetEnvironment, {
@@ -551,6 +605,7 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
                 id: product[targetIdField],
                 ...input,
               },
+              media: [], // TODO: temporary disabled for trial account
             },
           });
         } else {
@@ -559,6 +614,7 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
             query: print(CREATE_PRODUCT_MUTATION),
             variables: {
               input,
+              media: [], // TODO: temporary disabled for trial account
             },
           });
         }
@@ -566,7 +622,6 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
         // Update database and state
         await productDb.setProductComparison({
           ...product,
-          [targetIdField]: product[sourceIdField],
           differences: 'In sync',
           compared_at: new Date().toISOString(),
         });
@@ -576,18 +631,21 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
             p.handle === handle
               ? {
                   ...p,
-                  [targetIdField]: p[sourceIdField],
                   differences: 'In sync',
                   compared_at: new Date().toISOString(),
                 }
               : p
           ),
         }));
+
+        logger.info(
+          `👍 Product (${product.handle}) has been successfully synced to ${targetEnvironment}!`
+        );
       }
 
       set({ isLoading: false });
       logger.info(
-        `Successfully synced ${handles.length} products to ${targetEnvironment}`
+        `✅ Successfully synced ${handles.length} products to ${targetEnvironment}`
       );
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
