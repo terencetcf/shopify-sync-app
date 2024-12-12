@@ -11,6 +11,7 @@ import {
 } from '../graphql/collections';
 import { collectionDb } from './collectionDb';
 import { productDb } from './productDb';
+import { compareField } from '../utils/compareUtils';
 
 interface CollectionResponse {
   collections: {
@@ -106,56 +107,42 @@ export async function compareCollectionDetails(
   const differences: string[] = [];
 
   // Compare basic fields
-  if (productionCollection.title !== stagingCollection.title) {
-    differences.push('Title mismatch');
-    logger.info(
-      'Title mismatch',
-      productionCollection.title,
-      stagingCollection.title
-    );
-  }
-  if (productionCollection.description !== stagingCollection.description) {
-    differences.push('Description mismatch');
-    logger.info(
-      'Description mismatch',
-      productionCollection.description,
-      stagingCollection.description
-    );
-  }
-  if (
-    productionCollection.descriptionHtml !== stagingCollection.descriptionHtml
-  ) {
-    differences.push('HTML description mismatch');
-    logger.info(
-      'HTML description mismatch',
-      productionCollection.descriptionHtml,
-      stagingCollection.descriptionHtml
-    );
-  }
-  if (productionCollection.sortOrder !== stagingCollection.sortOrder) {
-    differences.push('Sort order mismatch');
-    logger.info(
-      'Sort order mismatch',
-      productionCollection.sortOrder,
-      stagingCollection.sortOrder
-    );
-  }
-  if (
-    productionCollection.templateSuffix !== stagingCollection.templateSuffix
-  ) {
-    differences.push('Template suffix mismatch');
-    logger.info(
-      'Template suffix mismatch',
-      productionCollection.templateSuffix,
-      stagingCollection.templateSuffix
-    );
-  }
+  compareField(
+    'Title',
+    productionCollection.title,
+    stagingCollection.title,
+    differences
+  );
+  compareField(
+    'Description',
+    productionCollection.description,
+    stagingCollection.description,
+    differences
+  );
+  compareField(
+    'HTML description',
+    productionCollection.descriptionHtml,
+    stagingCollection.descriptionHtml,
+    differences
+  );
+  compareField(
+    'Sort order',
+    productionCollection.sortOrder,
+    stagingCollection.sortOrder,
+    differences
+  );
+  compareField(
+    'Template suffix',
+    productionCollection.templateSuffix,
+    stagingCollection.templateSuffix,
+    differences
+  );
 
   // Compare image alt text
   if (
     productionCollection.image?.altText !== stagingCollection.image?.altText
   ) {
-    differences.push('Image alt text mismatch');
+    differences.push('Image alt text');
     logger.info(
       'Image alt text mismatch',
       productionCollection.image?.altText,
@@ -164,24 +151,18 @@ export async function compareCollectionDetails(
   }
 
   // Compare SEO fields
-  if (productionCollection.seo?.title !== stagingCollection.seo?.title) {
-    differences.push('SEO title mismatch');
-    logger.info(
-      'SEO title mismatch',
-      productionCollection.seo?.title,
-      stagingCollection.seo?.title
-    );
-  }
-  if (
-    productionCollection.seo?.description !== stagingCollection.seo?.description
-  ) {
-    differences.push('SEO description mismatch');
-    logger.info(
-      'SEO description mismatch',
-      productionCollection.seo?.description,
-      stagingCollection.seo?.description
-    );
-  }
+  compareField(
+    'SEO title',
+    productionCollection.seo?.title,
+    stagingCollection.seo?.title,
+    differences
+  );
+  compareField(
+    'SEO description',
+    productionCollection.seo?.description,
+    stagingCollection.seo?.description,
+    differences
+  );
 
   return differences;
 }

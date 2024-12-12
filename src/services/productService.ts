@@ -10,6 +10,7 @@ import {
   UPDATE_PRODUCT_MUTATION,
 } from '../graphql/products';
 import { productDb } from './productDb';
+import { compareField, compareMetafields } from '../utils/compareUtils';
 
 interface ProductResponse {
   products: {
@@ -110,21 +111,37 @@ export async function compareProductDetails(
 ): Promise<string[]> {
   const differences: string[] = [];
 
-  if (productionProduct.title !== stagingProduct.title) {
-    differences.push('Title');
-  }
-  if (productionProduct.description !== stagingProduct.description) {
-    differences.push('Description');
-  }
-  if (productionProduct.status !== stagingProduct.status) {
-    differences.push('Status');
-  }
-  if (productionProduct.vendor.trim() !== stagingProduct.vendor.trim()) {
-    differences.push('Vendor');
-  }
-  if (productionProduct.productType !== stagingProduct.productType) {
-    differences.push('Product Type');
-  }
+  // Compare basic fields
+  compareField(
+    'Title',
+    productionProduct.title,
+    stagingProduct.title,
+    differences
+  );
+  compareField(
+    'Description',
+    productionProduct.description,
+    stagingProduct.description,
+    differences
+  );
+  compareField(
+    'Status',
+    productionProduct.status,
+    stagingProduct.status,
+    differences
+  );
+  compareField(
+    'Vendor',
+    productionProduct.vendor.trim(),
+    stagingProduct.vendor.trim(),
+    differences
+  );
+  compareField(
+    'Product Type',
+    productionProduct.productType,
+    stagingProduct.productType,
+    differences
+  );
 
   // Compare tags
   if (
@@ -132,32 +149,15 @@ export async function compareProductDetails(
     JSON.stringify(stagingProduct.tags.sort())
   ) {
     differences.push('Tags');
+    logger.info('Tags mismatch', productionProduct.tags, stagingProduct.tags);
   }
 
   // Compare metafields
-  const productionMetafields = new Map(
-    productionProduct.metafields.edges.map((edge) => [
-      `${edge.node.namespace}:${edge.node.key}`,
-      edge.node.value,
-    ])
+  compareMetafields(
+    productionProduct.metafields,
+    stagingProduct.metafields,
+    differences
   );
-  const stagingMetafields = new Map(
-    stagingProduct.metafields.edges.map((edge) => [
-      `${edge.node.namespace}:${edge.node.key}`,
-      edge.node.value,
-    ])
-  );
-
-  if (productionMetafields.size !== stagingMetafields.size) {
-    differences.push('Metafields Count');
-  } else {
-    for (const [key, value] of productionMetafields) {
-      if (stagingMetafields.get(key) !== value) {
-        differences.push('Metafields Content');
-        break;
-      }
-    }
-  }
 
   return differences;
 }

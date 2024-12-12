@@ -10,6 +10,7 @@ import {
   UPDATE_PAGE_MUTATION,
 } from '../graphql/pages';
 import { pageDb } from './pageDb';
+import { compareField, compareMetafields } from '../utils/compareUtils';
 
 interface PageResponse {
   pages: {
@@ -23,30 +24,25 @@ interface PageResponse {
   };
 }
 
+interface PageMutationResponse {
+  page: {
+    id: string;
+  } | null;
+  userErrors: Array<{
+    field: string[];
+    message: string;
+  }>;
+}
+
 interface PageUpdateResponse {
-  pageUpdate: {
-    page: {
-      id: string;
-    } | null;
-    userErrors: Array<{
-      field: string[];
-      message: string;
-    }>;
-  };
+  pageUpdate: PageMutationResponse;
 }
 
 interface PageCreateResponse {
-  pageCreate: {
-    page: {
-      id: string;
-    } | null;
-    userErrors: Array<{
-      field: string[];
-      message: string;
-    }>;
-  };
+  pageCreate: PageMutationResponse;
 }
 
+// Main Service Functions
 export async function fetchAllPages(
   environment: Environment
 ): Promise<ShopifyPage[]> {
@@ -64,7 +60,9 @@ export async function fetchAllPages(
         }
       );
 
-      pages.push(...response.pages.edges.map(({ node }) => node));
+      pages.push(
+        ...response.pages.edges.map(({ node }: { node: ShopifyPage }) => node)
+      );
       hasNextPage = response.pages.pageInfo.hasNextPage;
       cursor = response.pages.pageInfo.endCursor;
 
@@ -106,43 +104,28 @@ export async function comparePageDetails(
 ): Promise<string[]> {
   const differences: string[] = [];
 
-  if (productionPage.title !== stagingPage.title) {
-    differences.push('Title mismatch');
-  }
-  if (productionPage.body !== stagingPage.body) {
-    differences.push('Body mismatch');
-  }
-  if (productionPage.isPublished !== stagingPage.isPublished) {
-    differences.push('Published status mismatch');
-  }
-  if (productionPage.templateSuffix !== stagingPage.templateSuffix) {
-    differences.push('Template suffix mismatch');
-  }
+  // Compare basic fields
+  compareField('Title', productionPage.title, stagingPage.title, differences);
+  compareField('Body', productionPage.body, stagingPage.body, differences);
+  compareField(
+    'Published status',
+    productionPage.isPublished,
+    stagingPage.isPublished,
+    differences
+  );
+  compareField(
+    'Template suffix',
+    productionPage.templateSuffix,
+    stagingPage.templateSuffix,
+    differences
+  );
 
   // Compare metafields
-  const productionMetafields = new Map(
-    productionPage.metafields.edges.map((edge) => [
-      `${edge.node.namespace}:${edge.node.key}`,
-      edge.node.value,
-    ])
+  compareMetafields(
+    productionPage.metafields,
+    stagingPage.metafields,
+    differences
   );
-  const stagingMetafields = new Map(
-    stagingPage.metafields.edges.map((edge) => [
-      `${edge.node.namespace}:${edge.node.key}`,
-      edge.node.value,
-    ])
-  );
-
-  if (productionMetafields.size !== stagingMetafields.size) {
-    differences.push('Metafields count mismatch');
-  } else {
-    for (const [key, value] of productionMetafields) {
-      if (stagingMetafields.get(key) !== value) {
-        differences.push('Metafields content mismatch');
-        break;
-      }
-    }
-  }
 
   return differences;
 }
