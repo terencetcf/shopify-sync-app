@@ -9,10 +9,14 @@ import './App.css';
 import { useEffect, useState } from 'react';
 import { useSettingsStore } from './stores/useSettingsStore';
 import SettingsAlert from './components/SettingsAlert';
+import Notification from './components/Notification';
+import { useNotificationStore } from './stores/useNotificationStore';
 
 function App() {
   const [isInitialized, setIsInitialized] = useState(false);
   const { initialize, error } = useSettingsStore();
+  const { show, title, message, type, hideNotification } =
+    useNotificationStore();
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -63,6 +67,13 @@ function App() {
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </main>
+        <Notification
+          show={show}
+          title={title}
+          message={message}
+          type={type}
+          onClose={hideNotification}
+        />
       </div>
     </BrowserRouter>
   );

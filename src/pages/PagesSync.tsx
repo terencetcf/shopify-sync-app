@@ -1,11 +1,11 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Environment } from '../types/environment';
-import Notification from '../components/Notification';
 import PageDetailsPanel from '../components/PageDetails/PageDetailsPanel';
 import { usePagesSyncStore } from '../stores/usePagesSyncStore';
 import { SyncProgress } from '../components/SyncProgress';
 import { PageComparison } from '../types/page';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { useNotificationStore } from '../stores/useNotificationStore';
 
 function DifferenceBadge({ text }: { text: string }) {
   const getBadgeColor = (text: string) => {
@@ -47,23 +47,14 @@ export default function PagesSync() {
   const [selectedHandles, setSelectedHandles] = useState<Set<string>>(
     new Set()
   );
-  const [showCompareNotification, setShowCompareNotification] = useState(false);
-  const [showSyncNotification, setShowSyncNotification] = useState(false);
-  const [showErrorNotification, setShowErrorNotification] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
   const [selectedPage, setSelectedPage] = useState<PageComparison | null>(null);
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
+
+  const { showNotification } = useNotificationStore();
 
   useEffect(() => {
     fetchStoredPages();
   }, []);
-
-  useEffect(() => {
-    if (error) {
-      setErrorMessage(error);
-      setShowErrorNotification(true);
-    }
-  }, [error]);
 
   // Compute validation states for sync buttons
   const { canSyncToProduction, canSyncToStaging } = useMemo(() => {
@@ -99,10 +90,16 @@ export default function PagesSync() {
   const handleCompare = async () => {
     try {
       await comparePages();
-      setShowCompareNotification(true);
+      showNotification({
+        title: 'Comparison Complete',
+        message: 'Pages have been compared successfully',
+      });
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to compare pages');
-      setShowErrorNotification(true);
+      showNotification({
+        title: 'Error',
+        message: err.message || 'Failed to compare pages',
+        type: 'error',
+      });
     }
   };
 
@@ -110,12 +107,16 @@ export default function PagesSync() {
     try {
       await syncPages(Array.from(selectedHandles), targetEnvironment);
       setSelectedHandles(new Set());
-      setShowSyncNotification(true);
+      showNotification({
+        title: 'Sync Complete',
+        message: 'Selected pages have been synced successfully',
+      });
     } catch (err: any) {
-      setErrorMessage(
-        err.message || `Failed to sync pages to ${targetEnvironment}`
-      );
-      setShowErrorNotification(true);
+      showNotification({
+        title: 'Error',
+        message: err.message || `Failed to sync pages to ${targetEnvironment}`,
+        type: 'error',
+      });
     }
   };
 
@@ -134,7 +135,7 @@ export default function PagesSync() {
 
   return (
     <div className="px-4 sm:px-6 lg:px-8">
-      {isProcessing && <div className="fixed inset-0 bg-black/50 z-40" />}
+      {isProcessing && <div className="fixed inset-0 bg-black/20 z-40" />}
 
       <div className={isProcessing ? 'pointer-events-none' : ''}>
         <div className="sticky top-0 z-10 bg-gray-900/95 backdrop-blur py-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-b border-gray-700">
@@ -257,10 +258,10 @@ export default function PagesSync() {
                 {isLoading && (
                   <div className="fixed inset-x-0 top-1/2 transform -translate-y-1/2 flex flex-col items-center justify-center space-y-4 z-50">
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                    <p className="text-sm font-medium text-gray-200 px-4 py-2 rounded-md shadow-lg bg-gray-900/50">
+                    <p className="text-white drop-shadow-[0_2px_2px_rgba(255,255,255,0.8)]">
                       {selectedHandles.size > 0
-                        ? 'Syncing...'
-                        : 'Retrieving data from servers...'}
+                        ? `Syncing selected pages to environment...`
+                        : 'Retrieving latest data from servers...'}
                     </p>
                   </div>
                 )}
@@ -397,28 +398,6 @@ export default function PagesSync() {
             </div>
           </div>
         </div>
-
-        <Notification
-          show={showCompareNotification}
-          title="Comparison Complete"
-          message="Pages have been compared successfully"
-          onClose={() => setShowCompareNotification(false)}
-        />
-
-        <Notification
-          show={showSyncNotification}
-          title="Sync Complete"
-          message="Selected pages have been synced successfully"
-          onClose={() => setShowSyncNotification(false)}
-        />
-
-        <Notification
-          show={showErrorNotification}
-          title="Error"
-          message={errorMessage}
-          onClose={() => setShowErrorNotification(false)}
-          type="error"
-        />
 
         <PageDetailsPanel
           isOpen={isDetailsPanelOpen}

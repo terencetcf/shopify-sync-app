@@ -27,6 +27,7 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
       logger.error('Failed to fetch stored products:', err);
+      throw err;
     }
   },
 
@@ -102,6 +103,7 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
     } catch (err: any) {
       set({ error: err.message, isLoading: false, compareProgress: null });
       logger.error('Failed to compare products:', err);
+      throw err;
     }
   },
 
@@ -194,6 +196,7 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
         'Failed to fetch product details';
       set({ error: errorMessage, isLoadingDetails: false });
       logger.error('Error fetching product details:', err);
+      throw err;
     }
   },
 }));

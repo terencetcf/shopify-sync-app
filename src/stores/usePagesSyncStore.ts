@@ -27,6 +27,7 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
       logger.error('Failed to fetch stored pages:', err);
+      throw err;
     }
   },
 
@@ -100,6 +101,7 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
     } catch (err: any) {
       set({ error: err.message, isLoading: false, compareProgress: null });
       logger.error('Failed to compare pages:', err);
+      throw err;
     }
   },
 
@@ -192,6 +194,7 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
         'Failed to fetch page details';
       set({ error: errorMessage, isLoadingDetails: false });
       logger.error('Error fetching page details:', err);
+      throw err;
     }
   },
 }));

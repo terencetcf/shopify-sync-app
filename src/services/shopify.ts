@@ -43,8 +43,7 @@ const getEnvironmentConfig = (environment: Environment) => {
 const handleShopifyErrors = (errors: any[]) => {
   if (errors?.length) {
     throw new Error(
-      `Server returned the following errors: ` +
-        errors.map((e) => `"${e.message}"`).join(', ')
+      `Server returned the following errors: ` + JSON.stringify(errors)
     );
   }
 };

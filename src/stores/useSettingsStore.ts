@@ -62,6 +62,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
       logger.error('Failed to initialize settings:', err);
+      throw err;
     }
   },
 
@@ -88,6 +89,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
       logger.error('Failed to update settings:', err);
+      throw err;
     }
   },
 }));

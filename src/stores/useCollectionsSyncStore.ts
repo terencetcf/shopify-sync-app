@@ -28,6 +28,7 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
       } catch (err: any) {
         set({ error: err.message, isLoading: false });
         logger.error('Failed to fetch stored collections:', err);
+        throw err;
       }
     },
 
@@ -107,6 +108,7 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
       } catch (err: any) {
         set({ error: err.message, isLoading: false, compareProgress: null });
         logger.error('Failed to compare collections:', err);
+        throw err;
       }
     },
 
@@ -204,6 +206,7 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
           'Failed to fetch collection details';
         set({ error: errorMessage, isLoadingDetails: false });
         logger.error('Error fetching collection details:', err);
+        throw err;
       }
     },
   })
