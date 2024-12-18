@@ -162,6 +162,26 @@ export async function compareProductDetails(
   return differences;
 }
 
+function getMediaInputs(sourceDetails: DetailedProduct) {
+  if (!sourceDetails.media?.edges) {
+    return [];
+  }
+
+  return sourceDetails.media.edges
+    .map((e) => {
+      if (!e.node.preview?.image?.url) {
+        return undefined;
+      }
+
+      return {
+        alt: e.node.preview.image.altText,
+        mediaContentType: e.node.mediaContentType,
+        originalSource: e.node.preview.image.url,
+      };
+    })
+    .filter(Boolean);
+}
+
 export async function syncProductToEnvironment(
   handle: string,
   sourceEnvironment: Environment,
@@ -205,6 +225,8 @@ export async function syncProductToEnvironment(
       seo: sourceDetails.seo,
     };
 
+    const media = getMediaInputs(sourceDetails);
+
     if (product[targetId]) {
       const response = await shopifyApi.post<ProductUpdateResponse>(
         targetEnvironment,
@@ -215,7 +237,7 @@ export async function syncProductToEnvironment(
               id: product[targetId],
               ...input,
             },
-            media: [], // TODO: temporary disabled for trial account
+            media,
           },
         }
       );
@@ -230,7 +252,7 @@ export async function syncProductToEnvironment(
           query: print(CREATE_PRODUCT_MUTATION),
           variables: {
             input,
-            media: [], // TODO: temporary disabled for trial account
+            media,
           },
         }
       );
