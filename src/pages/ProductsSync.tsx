@@ -225,6 +225,7 @@ export default function ProductsSync() {
               <button
                 onClick={() => handleSync('production')}
                 disabled={
+                  true ||
                   isLoading ||
                   selectedHandles.size === 0 ||
                   !canSyncToProduction

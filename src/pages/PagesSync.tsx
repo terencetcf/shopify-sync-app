@@ -214,6 +214,7 @@ export default function PagesSync() {
                 <button
                   onClick={() => handleSync('production')}
                   disabled={
+                    true ||
                     isLoading ||
                     selectedHandles.size === 0 ||
                     !canSyncToProduction
