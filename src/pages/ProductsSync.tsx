@@ -8,6 +8,7 @@ import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useNotificationStore } from '../stores/useNotificationStore';
 import { ResizableHeader } from '../components/ResizableHeader';
 import { uiSettingDb } from '../services/uiSettingDb';
+import { ScrollToTop } from '../components/ScrollToTop';
 
 function DifferenceBadge({ text }: { text: string }) {
   const getBadgeColor = (text: string) => {
@@ -538,9 +539,10 @@ export default function ProductsSync() {
         />
       </div>
 
-      {/* Keep progress indicators outside the blocked div */}
+      <ScrollToTop />
+
       {syncProgress && (
-        <div className="fixed bottom-6 right-6 w-96 z-50">
+        <div className="fixed bottom-6 right-20 w-96 z-50">
           <div className="transform transition-all duration-500 ease-in-out">
             <SyncProgress
               current={syncProgress.current}
@@ -552,7 +554,7 @@ export default function ProductsSync() {
       )}
 
       {compareProgress && (
-        <div className="fixed bottom-6 right-6 w-96 z-50">
+        <div className="fixed bottom-6 right-20 w-96 z-50">
           <div className="transform transition-all duration-500 ease-in-out">
             <SyncProgress
               current={compareProgress.current}
