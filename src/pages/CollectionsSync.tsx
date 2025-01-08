@@ -9,6 +9,7 @@ import { useNotificationStore } from '../stores/useNotificationStore';
 import { ResizableHeader } from '../components/ResizableHeader';
 import { uiSettingDb } from '../services/uiSettingDb';
 import { ScrollToTop } from '../components/ScrollToTop';
+import { SearchInput } from '../components/SearchInput';
 
 function DifferenceBadge({ text }: { text: string }) {
   const getBadgeColor = (text: string) => {
@@ -64,6 +65,19 @@ export default function CollectionsSync() {
     lastUpdated: 100,
     lastCompared: 100,
   });
+
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredCollections = useMemo(() => {
+    if (!searchQuery) return collections;
+    const query = searchQuery.toLowerCase();
+    return collections.filter(
+      (collection) =>
+        collection.title.toLowerCase().includes(query) ||
+        collection.handle.toLowerCase().includes(query) ||
+        collection.differences.toLowerCase().includes(query)
+    );
+  }, [collections, searchQuery]);
 
   useEffect(() => {
     const loadColumnWidths = async () => {
@@ -201,6 +215,9 @@ export default function CollectionsSync() {
                 />
                 <span className="sr-only">Get latest data from servers.</span>
               </button>
+              <span className="text-sm text-gray-400">
+                Click refresh button to get the latest differences from servers
+              </span>
             </div>
 
             <div className="flex space-x-4">
@@ -241,12 +258,15 @@ export default function CollectionsSync() {
               </button>
             </div>
           </div>
-          <div className="flex items-center justify-between">
-            <div className="flex text-sm text-gray-400 mt-4">
-              Select item(s) from the list below and click the button on the
-              right to sync with the environment.
+          <div className="flex items-center justify-between w-full mt-2">
+            <div className="flex-1">
+              <SearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search collections..."
+              />
             </div>
-            <div className="flex text-sm text-gray-400 mt-4">
+            <div className="flex text-sm text-gray-400">
               <svg
                 className="h-4 w-4 text-gray-400 mr-2"
                 fill="none"
@@ -260,7 +280,7 @@ export default function CollectionsSync() {
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              Total {collections.length} collections, {differenceCount}{' '}
+              Total {filteredCollections.length} collections, {differenceCount}{' '}
               differences
             </div>
           </div>
@@ -374,7 +394,7 @@ export default function CollectionsSync() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-700 bg-gray-800">
-                        {collections.map((collection) => (
+                        {filteredCollections.map((collection) => (
                           <tr
                             key={collection.handle}
                             onClick={() => handleRowClick(collection)}

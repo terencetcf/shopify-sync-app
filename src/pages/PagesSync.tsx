@@ -9,6 +9,7 @@ import { useNotificationStore } from '../stores/useNotificationStore';
 import { ResizableHeader } from '../components/ResizableHeader';
 import { uiSettingDb } from '../services/uiSettingDb';
 import { ScrollToTop } from '../components/ScrollToTop';
+import { SearchInput } from '../components/SearchInput';
 
 function DifferenceBadge({ text }: { text: string }) {
   const getBadgeColor = (text: string) => {
@@ -52,6 +53,7 @@ export default function PagesSync() {
   );
   const [selectedPage, setSelectedPage] = useState<PageComparison | null>(null);
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { showNotification } = useNotificationStore();
 
@@ -161,10 +163,22 @@ export default function PagesSync() {
     setIsDetailsPanelOpen(true);
   };
 
-  // Add this computed value
+  // Add this filtered data computation
+  const filteredPages = useMemo(() => {
+    if (!searchQuery) return pages;
+    const query = searchQuery.toLowerCase();
+    return pages.filter(
+      (page) =>
+        page.title.toLowerCase().includes(query) ||
+        page.handle.toLowerCase().includes(query) ||
+        page.differences.toLowerCase().includes(query)
+    );
+  }, [pages, searchQuery]);
+
+  // Update the differenceCount to use filteredPages
   const differenceCount = useMemo(() => {
-    return pages.filter((p) => p.differences !== 'In sync').length;
-  }, [pages]);
+    return filteredPages.filter((p) => p.differences !== 'In sync').length;
+  }, [filteredPages]);
 
   const isProcessing =
     isLoading || syncProgress !== null || compareProgress !== null;
@@ -192,6 +206,9 @@ export default function PagesSync() {
                 />
                 <span className="sr-only">Get latest data from servers.</span>
               </button>
+              <span className="text-sm text-gray-400">
+                Click refresh button to get the latest differences from servers
+              </span>
             </div>
 
             <div className="flex flex-col items-end space-y-2">
@@ -234,12 +251,15 @@ export default function PagesSync() {
               </div>
             </div>
           </div>
-          <div className="flex items-center justify-between">
-            <div className="flex text-sm text-gray-400 mt-4">
-              Select item(s) from the list below and click the button on the
-              right to sync with the environment.
+          <div className="flex items-center justify-between w-full mt-2">
+            <div className="flex-1">
+              <SearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search pages..."
+              />
             </div>
-            <div className="flex text-sm text-gray-400 mt-4">
+            <div className="flex text-sm text-gray-400">
               <svg
                 className="h-4 w-4 text-gray-400 mr-2"
                 fill="none"
@@ -253,7 +273,7 @@ export default function PagesSync() {
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              Total {pages.length} pages, {differenceCount} differences
+              Total {filteredPages.length} pages, {differenceCount} differences
             </div>
           </div>
         </div>
@@ -303,7 +323,7 @@ export default function PagesSync() {
                   </div>
                 )}
                 <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
-                  {pages.length > 0 ? (
+                  {filteredPages.length > 0 ? (
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-700 table-fixed">
                         <thead className="bg-gray-800">
@@ -365,7 +385,7 @@ export default function PagesSync() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-700 bg-gray-800">
-                          {pages.map((page) => (
+                          {filteredPages.map((page) => (
                             <tr
                               key={page.handle}
                               onClick={() => handleRowClick(page)}
