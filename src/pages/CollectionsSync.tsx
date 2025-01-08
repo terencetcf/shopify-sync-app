@@ -6,6 +6,8 @@ import { SyncProgress } from '../components/SyncProgress';
 import { CollectionComparison } from '../types/collection';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useNotificationStore } from '../stores/useNotificationStore';
+import { ResizableHeader } from '../components/ResizableHeader';
+import { uiSettingDb } from '../services/uiSettingDb';
 
 function DifferenceBadge({ text }: { text: string }) {
   const getBadgeColor = (text: string) => {
@@ -52,6 +54,39 @@ export default function CollectionsSync() {
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
 
   const { showNotification } = useNotificationStore();
+
+  const [columnWidths, setColumnWidths] = useState({
+    checkbox: 30,
+    title: 200,
+    handle: 100,
+    differences: 120,
+    lastUpdated: 100,
+    lastCompared: 100,
+  });
+
+  useEffect(() => {
+    const loadColumnWidths = async () => {
+      const savedWidths = await uiSettingDb.getUiSetting<typeof columnWidths>(
+        'collectionColumnWidths'
+      );
+      if (savedWidths) {
+        setColumnWidths(savedWidths);
+      }
+    };
+    loadColumnWidths();
+  }, []);
+
+  const handleColumnResize = async (
+    column: keyof typeof columnWidths,
+    width: number
+  ) => {
+    const newWidths = {
+      ...columnWidths,
+      [column]: width,
+    };
+    setColumnWidths(newWidths);
+    await uiSettingDb.setUiSetting('collectionColumnWidths', newWidths);
+  };
 
   useEffect(() => {
     fetchStoredCollections();
@@ -278,7 +313,12 @@ export default function CollectionsSync() {
                     <table className="min-w-full divide-y divide-gray-700">
                       <thead className="bg-gray-800">
                         <tr>
-                          <th className="px-3 py-4 text-left text-sm font-semibold text-gray-200">
+                          <ResizableHeader
+                            width={columnWidths.checkbox}
+                            minWidth={columnWidths.checkbox}
+                            className="px-3 py-4 text-left text-sm font-semibold text-gray-200"
+                            resizable={false}
+                          >
                             <input
                               type="checkbox"
                               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
@@ -287,22 +327,48 @@ export default function CollectionsSync() {
                               }
                               onChange={handleSelectAll}
                             />
-                          </th>
-                          <th className="px-3 py-4 text-left text-sm font-semibold text-gray-200">
+                          </ResizableHeader>
+                          <ResizableHeader
+                            width={columnWidths.title}
+                            onResize={(width) =>
+                              handleColumnResize('title', width)
+                            }
+                            className="px-3 py-4 text-left text-sm font-semibold text-gray-200"
+                          >
                             Title
-                          </th>
-                          <th className="px-3 py-4 text-left text-sm font-semibold text-gray-200">
+                          </ResizableHeader>
+                          <ResizableHeader
+                            width={columnWidths.handle}
+                            onResize={(width) =>
+                              handleColumnResize('handle', width)
+                            }
+                            className="px-3 py-4 text-left text-sm font-semibold text-gray-200"
+                          >
                             Handle
-                          </th>
-                          <th className="px-3 py-4 text-left text-sm font-semibold text-gray-200">
+                          </ResizableHeader>
+                          <ResizableHeader
+                            width={columnWidths.differences}
+                            onResize={(width) =>
+                              handleColumnResize('differences', width)
+                            }
+                            className="px-3 py-4 text-left text-sm font-semibold text-gray-200"
+                          >
                             Differences
-                          </th>
-                          <th className="px-3 py-4 text-left text-sm font-semibold text-gray-200">
+                          </ResizableHeader>
+                          <ResizableHeader
+                            width={columnWidths.lastUpdated}
+                            className="px-3 py-4 text-left text-sm font-semibold text-gray-200"
+                            resizable={false}
+                          >
                             Last Updated
-                          </th>
-                          <th className="px-3 py-4 text-left text-sm font-semibold text-gray-200">
+                          </ResizableHeader>
+                          <ResizableHeader
+                            width={columnWidths.lastCompared}
+                            className="px-3 py-4 text-left text-sm font-semibold text-gray-200"
+                            resizable={false}
+                          >
                             Last Compared
-                          </th>
+                          </ResizableHeader>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-700 bg-gray-800">
@@ -313,8 +379,12 @@ export default function CollectionsSync() {
                             className="cursor-pointer hover:bg-gray-750"
                           >
                             <td
-                              className="px-3 py-4 text-sm text-gray-300"
-                              onClick={(e) => e.stopPropagation()} // Prevent row click when clicking checkbox
+                              className="px-3 py-4 text-sm text-gray-300 overflow-hidden relative"
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                width: columnWidths.checkbox,
+                                maxWidth: columnWidths.checkbox,
+                              }}
                             >
                               <input
                                 type="checkbox"
@@ -324,20 +394,46 @@ export default function CollectionsSync() {
                                   handleSelectRow(collection.handle)
                                 }
                               />
+                              <div className="absolute right-0 inset-y-0 w-px bg-gray-600/30" />
                             </td>
-                            <td className="px-3 py-4 text-sm text-gray-300">
+                            <td
+                              className="px-3 py-4 text-sm text-gray-300 overflow-hidden relative"
+                              style={{
+                                width: columnWidths.title,
+                                maxWidth: columnWidths.title,
+                              }}
+                            >
                               <div
-                                className="max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap"
+                                className="truncate"
                                 title={collection.title}
                               >
                                 {collection.title}
                               </div>
+                              <div className="absolute right-0 inset-y-0 w-px bg-gray-600/30" />
                             </td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
-                              {collection.handle}
+                            <td
+                              className="px-3 py-4 text-sm text-gray-300 overflow-hidden relative"
+                              style={{
+                                width: columnWidths.handle,
+                                maxWidth: columnWidths.handle,
+                              }}
+                            >
+                              <div
+                                className="truncate"
+                                title={collection.handle}
+                              >
+                                {collection.handle}
+                              </div>
+                              <div className="absolute right-0 inset-y-0 w-px bg-gray-600/30" />
                             </td>
-                            <td className="px-3 py-4 text-sm text-gray-300">
-                              <div className="flex flex-wrap gap-1">
+                            <td
+                              className="px-3 py-4 text-sm text-gray-300 overflow-hidden relative"
+                              style={{
+                                width: columnWidths.differences,
+                                maxWidth: columnWidths.differences,
+                              }}
+                            >
+                              <div className="flex flex-wrap gap-1 overflow-hidden">
                                 {collection.differences
                                   .split(', ')
                                   .map((difference, index) => (
@@ -347,14 +443,44 @@ export default function CollectionsSync() {
                                     />
                                   ))}
                               </div>
+                              <div className="absolute right-0 inset-y-0 w-px bg-gray-600/30" />
                             </td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
-                              {new Date(collection.updated_at).toLocaleString()}
+                            <td
+                              className="px-3 py-4 text-sm text-gray-300 overflow-hidden relative"
+                              style={{
+                                width: columnWidths.lastUpdated,
+                                maxWidth: columnWidths.lastUpdated,
+                              }}
+                            >
+                              <div
+                                className="truncate"
+                                title={new Date(
+                                  collection.updated_at
+                                ).toLocaleString()}
+                              >
+                                {new Date(
+                                  collection.updated_at
+                                ).toLocaleString()}
+                              </div>
+                              <div className="absolute right-0 inset-y-0 w-px bg-gray-600/30" />
                             </td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
-                              {new Date(
-                                collection.compared_at
-                              ).toLocaleString()}
+                            <td
+                              className="px-3 py-4 text-sm text-gray-300 overflow-hidden relative"
+                              style={{
+                                width: columnWidths.lastCompared,
+                                maxWidth: columnWidths.lastCompared,
+                              }}
+                            >
+                              <div
+                                className="truncate"
+                                title={new Date(
+                                  collection.compared_at
+                                ).toLocaleString()}
+                              >
+                                {new Date(
+                                  collection.compared_at
+                                ).toLocaleString()}
+                              </div>
                             </td>
                           </tr>
                         ))}
