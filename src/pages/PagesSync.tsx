@@ -170,8 +170,7 @@ export default function PagesSync() {
     return pages.filter(
       (page) =>
         page.title.toLowerCase().includes(query) ||
-        page.handle.toLowerCase().includes(query) ||
-        page.differences.toLowerCase().includes(query)
+        page.handle.toLowerCase().includes(query)
     );
   }, [pages, searchQuery]);
 

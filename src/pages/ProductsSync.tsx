@@ -74,8 +74,7 @@ export default function ProductsSync() {
     return products.filter(
       (product) =>
         product.title.toLowerCase().includes(query) ||
-        product.handle.toLowerCase().includes(query) ||
-        product.differences.toLowerCase().includes(query)
+        product.handle.toLowerCase().includes(query)
     );
   }, [products, searchQuery]);
 

@@ -74,8 +74,7 @@ export default function CollectionsSync() {
     return collections.filter(
       (collection) =>
         collection.title.toLowerCase().includes(query) ||
-        collection.handle.toLowerCase().includes(query) ||
-        collection.differences.toLowerCase().includes(query)
+        collection.handle.toLowerCase().includes(query)
     );
   }, [collections, searchQuery]);
 
