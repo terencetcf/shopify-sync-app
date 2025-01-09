@@ -88,6 +88,10 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
           differences: differences.join(', ') || 'In sync',
           updated_at: (productionProduct || stagingProduct)!.updatedAt,
           compared_at: new Date().toISOString(),
+          collections:
+            (productionProduct || stagingProduct)?.collections?.edges
+              .map((edge) => edge.node.handle)
+              .join(', ') || '',
         });
 
         // Update progress

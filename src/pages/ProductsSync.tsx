@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, Fragment, useRef } from 'react';
 import { Environment } from '../types/environment';
 import ProductDetailsPanel from '../components/ProductDetails/ProductDetailsPanel';
 import { useProductsSyncStore } from '../stores/useProductsSyncStore';
@@ -10,6 +10,15 @@ import { ResizableHeader } from '../components/ResizableHeader';
 import { uiSettingDb } from '../services/uiSettingDb';
 import { ScrollToTop } from '../components/ScrollToTop';
 import { SearchInput } from '../components/SearchInput';
+import {
+  Listbox,
+  ListboxButton,
+  ListboxOption,
+  ListboxOptions,
+  Transition,
+} from '@headlessui/react';
+import { ChevronUpDownIcon, XMarkIcon } from '@heroicons/react/20/solid';
+import { collectionDb } from '../services/collectionDb';
 
 function DifferenceBadge({ text }: { text: string }) {
   const getBadgeColor = (text: string) => {
@@ -67,16 +76,75 @@ export default function ProductsSync() {
   });
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCollection, setSelectedCollection] = useState<string>('all');
+
+  const [availableCollections, setAvailableCollections] = useState<
+    Array<{ handle: string; title: string }>
+  >([]);
+
+  const [collectionSearchQuery, setCollectionSearchQuery] = useState('');
+
+  const collectionSearchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const loadCollections = async () => {
+      const collections = await collectionDb.getCollectionComparisons();
+      setAvailableCollections(
+        collections.map((c) => ({
+          handle: c.handle,
+          title: c.title,
+        }))
+      );
+    };
+    loadCollections();
+  }, []);
+
+  const collectionOptions = useMemo(() => {
+    const sortedCollections = [...availableCollections].sort((a, b) =>
+      a.title.localeCompare(b.title)
+    );
+
+    return [
+      { value: 'all', label: 'All Collections' },
+      ...sortedCollections.map((c) => ({
+        value: c.handle,
+        label: `${c.title} (${c.handle})`,
+      })),
+    ];
+  }, [availableCollections]);
+
+  const filteredCollectionOptions = useMemo(() => {
+    const options = collectionOptions;
+    if (!collectionSearchQuery) return options;
+
+    const query = collectionSearchQuery.toLowerCase();
+    return options.filter(
+      (option) =>
+        option.label.toLowerCase().includes(query) ||
+        option.value.toLowerCase().includes(query)
+    );
+  }, [collectionOptions, collectionSearchQuery]);
 
   const filteredProducts = useMemo(() => {
-    if (!searchQuery) return products;
-    const query = searchQuery.toLowerCase();
-    return products.filter(
-      (product) =>
-        product.title.toLowerCase().includes(query) ||
-        product.handle.toLowerCase().includes(query)
-    );
-  }, [products, searchQuery]);
+    let filtered = products;
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (product) =>
+          product.title.toLowerCase().includes(query) ||
+          product.handle.toLowerCase().includes(query)
+      );
+    }
+
+    if (selectedCollection !== 'all') {
+      filtered = filtered.filter((product) =>
+        product.collections?.includes(selectedCollection)
+      );
+    }
+
+    return filtered;
+  }, [products, searchQuery, selectedCollection]);
 
   useEffect(() => {
     const loadColumnWidths = async () => {
@@ -260,17 +328,105 @@ export default function ProductsSync() {
               </button>
             </div>
           </div>
-          <div className="flex items-center justify-between w-full mt-2">
-            <div className="flex-1">
+          <div className="flex items-center justify-stretch mt-2">
+            <div className="flex w-3/12 mr-4">
               <SearchInput
                 value={searchQuery}
                 onChange={setSearchQuery}
                 placeholder="Search products..."
               />
             </div>
-            <div className="flex text-sm text-gray-400">
+            <div className="flex-auto w-5/12">
+              <Listbox
+                value={selectedCollection}
+                onChange={setSelectedCollection}
+              >
+                <div className="relative flex-auto">
+                  <ListboxButton className="relative w-full cursor-default rounded-md bg-gray-700 py-1.5 pl-3 pr-10 text-left text-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-sm sm:leading-6">
+                    <span className="block truncate">
+                      {
+                        collectionOptions.find(
+                          (opt) => opt.value === selectedCollection
+                        )?.label
+                      }
+                    </span>
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                      <ChevronUpDownIcon
+                        className="h-5 w-5 text-gray-400"
+                        aria-hidden="true"
+                      />
+                    </span>
+                  </ListboxButton>
+                  <Transition
+                    as={Fragment}
+                    leave="transition ease-in duration-100"
+                    leaveFrom="opacity-100"
+                    leaveTo="opacity-0"
+                  >
+                    <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-gray-700 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                      <div className="sticky top-0 z-10 bg-gray-700 p-2">
+                        <div className="relative">
+                          <input
+                            ref={collectionSearchInputRef}
+                            type="text"
+                            className="w-full rounded-md border-0 bg-gray-600 py-1.5 pl-3 pr-8 text-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-500 sm:text-sm sm:leading-6"
+                            placeholder="Search collections..."
+                            value={collectionSearchQuery}
+                            onChange={(e) =>
+                              setCollectionSearchQuery(e.target.value)
+                            }
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          {collectionSearchQuery && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCollectionSearchQuery('');
+                                setSelectedCollection('all');
+                                collectionSearchInputRef.current?.focus();
+                              }}
+                              className="absolute inset-y-0 right-1 flex items-center shadow-none"
+                            >
+                              <XMarkIcon
+                                className="h-5 w-5 text-gray-400 hover:text-gray-200"
+                                aria-hidden="true"
+                              />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {filteredCollectionOptions.map((option) => (
+                        <ListboxOption
+                          key={option.value}
+                          className={({ active }) =>
+                            `relative cursor-default select-none py-2 pl-3 pr-9 ${
+                              active
+                                ? 'bg-gray-600 text-white'
+                                : 'text-gray-300'
+                            }`
+                          }
+                          value={option.value}
+                        >
+                          {({ selected }) => (
+                            <span
+                              className={`block truncate ${
+                                selected ? 'font-semibold' : 'font-normal'
+                              }`}
+                            >
+                              {option.label}
+                            </span>
+                          )}
+                        </ListboxOption>
+                      ))}
+                    </ListboxOptions>
+                  </Transition>
+                </div>
+              </Listbox>
+            </div>
+            <div className="flex-auto text-right text-sm text-gray-400">
               <svg
-                className="h-4 w-4 text-gray-400 mr-2"
+                className="h-4 w-4 text-gray-400 mr-2 inline"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -325,7 +481,7 @@ export default function ProductsSync() {
                 {isLoading && (
                   <div className="fixed inset-x-0 top-1/2 transform -translate-y-1/2 flex flex-col items-center justify-center space-y-4 z-50">
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                    <p className="text-white drop-shadow-[0_2px_2px_rgba(255,255,255,0.8)]">
+                    <p className="text-white bg-gradient-to-br from-transparent via-gray-900/75 to-transparent px-5 py-3 rounded-lg">
                       {selectedHandles.size > 0
                         ? `Syncing selected products to environment...`
                         : 'Retrieving latest data from servers...'}
@@ -424,7 +580,7 @@ export default function ProductsSync() {
                               }}
                             >
                               <div className="truncate" title={product.title}>
-                                {product.title}
+                                {product.title} - {product.collections}
                               </div>
                               <div className="absolute right-0 inset-y-0 w-px bg-gray-600/30" />
                             </td>

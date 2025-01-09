@@ -257,17 +257,17 @@ export default function CollectionsSync() {
               </button>
             </div>
           </div>
-          <div className="flex items-center justify-between w-full mt-2">
-            <div className="flex-1">
+          <div className="flex items-center justify-stretch mt-2">
+            <div className="flex w-5/12">
               <SearchInput
                 value={searchQuery}
                 onChange={setSearchQuery}
                 placeholder="Search collections..."
               />
             </div>
-            <div className="flex text-sm text-gray-400">
+            <div className="flex-auto text-right text-sm text-gray-400">
               <svg
-                className="h-4 w-4 text-gray-400 mr-2"
+                className="h-4 w-4 text-gray-400 mr-2 inline"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -322,7 +322,7 @@ export default function CollectionsSync() {
                 {isLoading && (
                   <div className="fixed inset-x-0 top-1/2 transform -translate-y-1/2 flex flex-col items-center justify-center space-y-4 z-50">
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                    <p className="text-white drop-shadow-[0_2px_2px_rgba(255,255,255,0.8)]">
+                    <p className="text-white bg-gradient-to-br from-transparent via-gray-900/75 to-transparent px-5 py-3 rounded-lg">
                       {selectedHandles.size > 0
                         ? `Syncing selected collections to environment...`
                         : 'Retrieving latest data from servers...'}

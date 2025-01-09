@@ -9,6 +9,13 @@ export const PRODUCTS_QUERY = gql`
           handle
           title
           updatedAt
+          collections(first: 20) {
+            edges {
+              node {
+                handle
+              }
+            }
+          }
         }
       }
       pageInfo {

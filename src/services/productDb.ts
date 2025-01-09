@@ -57,15 +57,17 @@ export const productDb = {
         title,
         differences,
         updated_at,
-        compared_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+        compared_at,
+        collections
+      ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, $7)
       ON CONFLICT(handle) DO UPDATE SET
         production_id = $2,
         staging_id = $3,
         title = $4,
         differences = $5,
         updated_at = $6,
-        compared_at = CURRENT_TIMESTAMP`,
+        compared_at = CURRENT_TIMESTAMP,
+        collections = $7`,
       [
         product.handle,
         product.production_id || null,
@@ -73,6 +75,7 @@ export const productDb = {
         product.title,
         product.differences,
         product.updated_at,
+        product.collections || '',
       ]
     );
   },

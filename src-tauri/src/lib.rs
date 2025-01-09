@@ -98,6 +98,12 @@ pub fn run() {
             );",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 10,
+            description: "add_collections_to_products",
+            sql: "ALTER TABLE products ADD COLUMN collections TEXT NOT NULL DEFAULT '';",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

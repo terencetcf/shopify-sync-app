@@ -5,6 +5,13 @@ export interface ShopifyProduct {
   handle: string;
   title: string;
   updatedAt: string;
+  collections?: {
+    edges: Array<{
+      node: {
+        handle: string;
+      };
+    }>;
+  };
 }
 
 export interface ProductComparison {
@@ -15,6 +22,7 @@ export interface ProductComparison {
   differences: string;
   updated_at: string;
   compared_at: string;
+  collections: string;
 }
 
 export interface DetailedProduct {
