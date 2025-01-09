@@ -580,7 +580,7 @@ export default function ProductsSync() {
                               }}
                             >
                               <div className="truncate" title={product.title}>
-                                {product.title} - {product.collections}
+                                {product.title}
                               </div>
                               <div className="absolute right-0 inset-y-0 w-px bg-gray-600/30" />
                             </td>
