@@ -42,6 +42,7 @@ export interface DetailedProduct {
   requiresSellingPlan: boolean;
   combinedListingRole?: string;
   category?: {
+    id: string;
     name: string;
   };
   seo?: {

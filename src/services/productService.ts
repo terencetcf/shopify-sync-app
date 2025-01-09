@@ -212,7 +212,7 @@ export async function syncProductToEnvironment(
       productType: sourceDetails.productType,
       status: sourceDetails.status,
       tags: sourceDetails.tags,
-      category: sourceDetails.category,
+      category: sourceDetails.category?.id,
       templateSuffix: sourceDetails.templateSuffix,
       metafields: sourceDetails.metafields.edges.map((edge) => ({
         namespace: edge.node.namespace,

@@ -45,6 +45,7 @@ export const PRODUCT_DETAILS_QUERY = gql`
       requiresSellingPlan
       combinedListingRole
       category {
+        id
         name
       }
       seo {
