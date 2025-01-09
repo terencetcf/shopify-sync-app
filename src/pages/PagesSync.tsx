@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, Fragment } from 'react';
 import { Environment } from '../types/environment';
 import PageDetailsPanel from '../components/PageDetails/PageDetailsPanel';
 import { usePagesSyncStore } from '../stores/usePagesSyncStore';
@@ -10,6 +10,25 @@ import { ResizableHeader } from '../components/ResizableHeader';
 import { uiSettingDb } from '../services/uiSettingDb';
 import { ScrollToTop } from '../components/ScrollToTop';
 import { SearchInput } from '../components/SearchInput';
+import {
+  Popover,
+  PopoverButton,
+  PopoverPanel,
+  Transition,
+} from '@headlessui/react';
+import { ChevronDownIcon } from '@heroicons/react/20/solid';
+
+interface FilterOption {
+  id: string;
+  label: string;
+}
+
+const filterOptions: FilterOption[] = [
+  { id: 'missing_staging', label: 'Missing in Staging' },
+  { id: 'missing_production', label: 'Missing in Production' },
+  { id: 'has_differences', label: 'Has differences' },
+  { id: 'in_sync', label: 'In sync' },
+];
 
 function DifferenceBadge({ text }: { text: string }) {
   const getBadgeColor = (text: string) => {
@@ -54,6 +73,9 @@ export default function PagesSync() {
   const [selectedPage, setSelectedPage] = useState<PageComparison | null>(null);
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFilters, setSelectedFilters] = useState<Set<string>>(
+    new Set()
+  );
 
   const { showNotification } = useNotificationStore();
 
@@ -109,7 +131,7 @@ export default function PagesSync() {
 
   const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      setSelectedHandles(new Set(pages.map((p) => p.handle)));
+      setSelectedHandles(new Set(filteredPages.map((p) => p.handle)));
     } else {
       setSelectedHandles(new Set());
     }
@@ -165,18 +187,59 @@ export default function PagesSync() {
 
   // Add this filtered data computation
   const filteredPages = useMemo(() => {
-    if (!searchQuery) return pages;
-    const query = searchQuery.toLowerCase();
-    return pages.filter(
-      (page) =>
-        page.title.toLowerCase().includes(query) ||
-        page.handle.toLowerCase().includes(query)
-    );
-  }, [pages, searchQuery]);
+    let filtered = pages;
 
-  // Update the differenceCount to use filteredPages
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (page) =>
+          page.title.toLowerCase().includes(query) ||
+          page.handle.toLowerCase().includes(query)
+      );
+    }
+
+    if (selectedFilters.size > 0) {
+      filtered = filtered.filter((page) => {
+        return Array.from(selectedFilters).some((filter) => {
+          switch (filter) {
+            case 'missing_staging':
+              return !page.staging_id;
+            case 'missing_production':
+              return !page.production_id;
+            case 'has_differences':
+              return (
+                page.staging_id &&
+                page.production_id &&
+                page.differences !== 'In sync'
+              );
+            case 'in_sync':
+              return page.differences === 'In sync';
+            default:
+              return false;
+          }
+        });
+      });
+    }
+
+    return filtered;
+  }, [pages, searchQuery, selectedFilters]);
+
+  const inSyncCount = useMemo(() => {
+    return filteredPages.filter((p) => p.differences === 'In sync').length;
+  }, [filteredPages]);
+
+  const missingOnStagingsCount = useMemo(() => {
+    return filteredPages.filter((p) => !p.staging_id).length;
+  }, [filteredPages]);
+
+  const missingOnProductionsCount = useMemo(() => {
+    return filteredPages.filter((p) => !p.production_id).length;
+  }, [filteredPages]);
+
   const differenceCount = useMemo(() => {
-    return filteredPages.filter((p) => p.differences !== 'In sync').length;
+    return filteredPages.filter(
+      (p) => p.staging_id && p.production_id && p.differences !== 'In sync'
+    ).length;
   }, [filteredPages]);
 
   const isProcessing =
@@ -250,29 +313,68 @@ export default function PagesSync() {
               </div>
             </div>
           </div>
-          <div className="flex items-center justify-stretch mt-2">
-            <div className="flex w-5/12">
+          <div className="flex gap-4 items-center justify-stretch mt-2">
+            <div className="flex-shrink w-60">
+              <Popover className="relative">
+                <PopoverButton className="relative w-full cursor-default rounded-md bg-gray-700 py-1.5 pl-3 pr-10 text-left text-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-sm sm:leading-6">
+                  <span className="block truncate">
+                    {selectedFilters.size === 0
+                      ? 'Filter by status'
+                      : `${selectedFilters.size} filter${
+                          selectedFilters.size > 1 ? 's' : ''
+                        } selected`}
+                  </span>
+                  <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                    <ChevronDownIcon
+                      className="h-5 w-5 text-gray-400"
+                      aria-hidden="true"
+                    />
+                  </span>
+                </PopoverButton>
+                <Transition
+                  as={Fragment}
+                  leave="transition ease-in duration-100"
+                  leaveFrom="opacity-100"
+                  leaveTo="opacity-0"
+                >
+                  <PopoverPanel className="absolute z-10 mt-1 w-full overflow-auto rounded-md bg-gray-700 py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                    <div className="p-2 space-y-2">
+                      {filterOptions.map((option) => (
+                        <div key={option.id} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id={option.id}
+                            checked={selectedFilters.has(option.id)}
+                            onChange={(e) => {
+                              const newFilters = new Set(selectedFilters);
+                              if (e.target.checked) {
+                                newFilters.add(option.id);
+                              } else {
+                                newFilters.delete(option.id);
+                              }
+                              setSelectedFilters(newFilters);
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
+                          />
+                          <label
+                            htmlFor={option.id}
+                            className="ml-2 text-sm text-gray-300 select-none"
+                          >
+                            {option.label}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverPanel>
+                </Transition>
+              </Popover>
+            </div>
+            <div className="flex w-2/5">
               <SearchInput
                 value={searchQuery}
                 onChange={setSearchQuery}
                 placeholder="Search pages..."
               />
-            </div>
-            <div className="flex-auto text-right text-sm text-gray-400">
-              <svg
-                className="h-4 w-4 text-gray-400 mr-2 inline"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              Total {filteredPages.length} pages, {differenceCount} differences
             </div>
           </div>
         </div>
@@ -307,7 +409,7 @@ export default function PagesSync() {
           </div>
         )}
 
-        <div className="mt-8 flow-root">
+        <div className="mt-4 flow-root">
           <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
               <div className={`relative ${isLoading ? 'opacity-50' : ''}`}>
@@ -321,6 +423,25 @@ export default function PagesSync() {
                     </p>
                   </div>
                 )}
+                <div className="text-right text-sm text-gray-400 mb-2">
+                  <svg
+                    className="h-4 w-4 text-gray-400 mr-2 inline"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  Total {filteredPages.length} products, {inSyncCount} in sync,{' '}
+                  {missingOnStagingsCount} missing on Staging,{' '}
+                  {missingOnProductionsCount} missing on Production,{' '}
+                  {differenceCount} has differences
+                </div>
                 <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
                   {filteredPages.length > 0 ? (
                     <div className="overflow-x-auto">
@@ -336,7 +457,11 @@ export default function PagesSync() {
                               <input
                                 type="checkbox"
                                 className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
-                                checked={selectedHandles.size === pages.length}
+                                checked={
+                                  selectedHandles.size ===
+                                    filteredPages.length &&
+                                  filteredPages.length > 0
+                                }
                                 onChange={handleSelectAll}
                               />
                             </ResizableHeader>

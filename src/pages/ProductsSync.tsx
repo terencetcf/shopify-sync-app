@@ -16,9 +16,28 @@ import {
   ListboxOption,
   ListboxOptions,
   Transition,
+  Popover,
+  PopoverButton,
+  PopoverPanel,
 } from '@headlessui/react';
-import { ChevronUpDownIcon, XMarkIcon } from '@heroicons/react/20/solid';
+import {
+  ChevronUpDownIcon,
+  XMarkIcon,
+  ChevronDownIcon,
+} from '@heroicons/react/20/solid';
 import { collectionDb } from '../services/collectionDb';
+
+interface FilterOption {
+  id: string;
+  label: string;
+}
+
+const filterOptions: FilterOption[] = [
+  { id: 'missing_staging', label: 'Missing in Staging' },
+  { id: 'missing_production', label: 'Missing in Production' },
+  { id: 'has_differences', label: 'Has differences' },
+  { id: 'in_sync', label: 'In sync' },
+];
 
 function DifferenceBadge({ text }: { text: string }) {
   const getBadgeColor = (text: string) => {
@@ -86,6 +105,10 @@ export default function ProductsSync() {
 
   const collectionSearchInputRef = useRef<HTMLInputElement>(null);
 
+  const [selectedFilters, setSelectedFilters] = useState<Set<string>>(
+    new Set()
+  );
+
   useEffect(() => {
     const loadCollections = async () => {
       const collections = await collectionDb.getCollectionComparisons();
@@ -143,8 +166,31 @@ export default function ProductsSync() {
       );
     }
 
+    if (selectedFilters.size > 0) {
+      filtered = filtered.filter((product) => {
+        return Array.from(selectedFilters).some((filter) => {
+          switch (filter) {
+            case 'missing_staging':
+              return !product.staging_id;
+            case 'missing_production':
+              return !product.production_id;
+            case 'has_differences':
+              return (
+                product.staging_id &&
+                product.production_id &&
+                product.differences !== 'In sync'
+              );
+            case 'in_sync':
+              return product.differences === 'In sync';
+            default:
+              return false;
+          }
+        });
+      });
+    }
+
     return filtered;
-  }, [products, searchQuery, selectedCollection]);
+  }, [products, searchQuery, selectedCollection, selectedFilters]);
 
   useEffect(() => {
     const loadColumnWidths = async () => {
@@ -193,13 +239,7 @@ export default function ProductsSync() {
 
   const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      setSelectedHandles(
-        new Set(
-          products
-            // .filter((p) => p.differences !== 'In sync')
-            .map((p) => p.handle)
-        )
-      );
+      setSelectedHandles(new Set(filteredProducts.map((p) => p.handle)));
     } else {
       setSelectedHandles(new Set());
     }
@@ -254,10 +294,23 @@ export default function ProductsSync() {
     setIsDetailsPanelOpen(true);
   };
 
-  // Add this computed value
+  const inSyncCount = useMemo(() => {
+    return filteredProducts.filter((p) => p.differences === 'In sync').length;
+  }, [filteredProducts]);
+
+  const missingOnStagingsCount = useMemo(() => {
+    return filteredProducts.filter((p) => !p.staging_id).length;
+  }, [filteredProducts]);
+
+  const missingOnProductionsCount = useMemo(() => {
+    return filteredProducts.filter((p) => !p.production_id).length;
+  }, [filteredProducts]);
+
   const differenceCount = useMemo(() => {
-    return products.filter((p) => p.differences !== 'In sync').length;
-  }, [products]);
+    return filteredProducts.filter(
+      (p) => p.staging_id && p.production_id && p.differences !== 'In sync'
+    ).length;
+  }, [filteredProducts]);
 
   const isProcessing =
     isLoading || syncProgress !== null || compareProgress !== null;
@@ -328,15 +381,70 @@ export default function ProductsSync() {
               </button>
             </div>
           </div>
-          <div className="flex items-center justify-stretch mt-2">
-            <div className="flex w-3/12 mr-4">
+          <div className="flex gap-4 items-center justify-stretch mt-2">
+            <div className="flex-shrink w-60">
+              <Popover className="relative">
+                <PopoverButton className="relative w-full cursor-default rounded-md bg-gray-700 py-1.5 pl-3 pr-10 text-left text-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-sm sm:leading-6">
+                  <span className="block truncate">
+                    {selectedFilters.size === 0
+                      ? 'Filter by status'
+                      : `${selectedFilters.size} filter${
+                          selectedFilters.size > 1 ? 's' : ''
+                        } selected`}
+                  </span>
+                  <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                    <ChevronDownIcon
+                      className="h-5 w-5 text-gray-400"
+                      aria-hidden="true"
+                    />
+                  </span>
+                </PopoverButton>
+                <Transition
+                  as={Fragment}
+                  leave="transition ease-in duration-100"
+                  leaveFrom="opacity-100"
+                  leaveTo="opacity-0"
+                >
+                  <PopoverPanel className="absolute z-10 mt-1 w-full overflow-auto rounded-md bg-gray-700 py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                    <div className="p-2 space-y-2">
+                      {filterOptions.map((option) => (
+                        <div key={option.id} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id={option.id}
+                            checked={selectedFilters.has(option.id)}
+                            onChange={(e) => {
+                              const newFilters = new Set(selectedFilters);
+                              if (e.target.checked) {
+                                newFilters.add(option.id);
+                              } else {
+                                newFilters.delete(option.id);
+                              }
+                              setSelectedFilters(newFilters);
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
+                          />
+                          <label
+                            htmlFor={option.id}
+                            className="ml-2 text-sm text-gray-300 select-none"
+                          >
+                            {option.label}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverPanel>
+                </Transition>
+              </Popover>
+            </div>
+            <div className="flex-auto w-1/5">
               <SearchInput
                 value={searchQuery}
                 onChange={setSearchQuery}
                 placeholder="Search products..."
               />
             </div>
-            <div className="flex-auto w-5/12">
+            <div className="flex-auto w-4/12">
               <Listbox
                 value={selectedCollection}
                 onChange={setSelectedCollection}
@@ -424,23 +532,6 @@ export default function ProductsSync() {
                 </div>
               </Listbox>
             </div>
-            <div className="flex-auto text-right text-sm text-gray-400">
-              <svg
-                className="h-4 w-4 text-gray-400 mr-2 inline"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              Total {filteredProducts.length} products, {differenceCount}{' '}
-              differences
-            </div>
           </div>
         </div>
 
@@ -474,7 +565,7 @@ export default function ProductsSync() {
           </div>
         )}
 
-        <div className="mt-8 flow-root">
+        <div className="mt-4 flow-root">
           <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
               <div className={`relative ${isLoading ? 'opacity-50' : ''}`}>
@@ -488,6 +579,25 @@ export default function ProductsSync() {
                     </p>
                   </div>
                 )}
+                <div className="text-right text-sm text-gray-400 mb-2">
+                  <svg
+                    className="h-4 w-4 text-gray-400 mr-2 inline"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  Total {filteredProducts.length} products, {inSyncCount} in
+                  sync, {missingOnStagingsCount} missing on Staging,{' '}
+                  {missingOnProductionsCount} missing on Production,{' '}
+                  {differenceCount} has differences
+                </div>
                 <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
                   {products.length > 0 ? (
                     <table className="min-w-full divide-y divide-gray-700">
