@@ -2,12 +2,14 @@ import { create } from 'zustand';
 import { deviceIdentifier } from '../utils/deviceIdentifier';
 import { logger } from '../utils/logger';
 import AppDb from '../services/AppDb';
+import { isTrueOrDefault } from '../utils/compareUtils';
 
 interface Settings {
   shopifyProductionStoreUrl: string;
   shopifyProductionAccessToken: string;
   shopifyStagingStoreUrl: string;
   shopifyStagingAccessToken: string;
+  syncProductImages: boolean;
 }
 
 interface SettingsStore {
@@ -37,6 +39,10 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
             .VITE_SHOPIFY_STAGING_STORE_URL,
           shopifyStagingAccessToken: import.meta.env
             .VITE_SHOPIFY_STAGING_ACCESS_TOKEN,
+          syncProductImages: isTrueOrDefault(
+            import.meta.env.VITE_SHOPIFY_SYNC_PRODUCT_IMAGES,
+            true
+          ),
         },
         isLoading: false,
       });

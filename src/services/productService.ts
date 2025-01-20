@@ -11,6 +11,7 @@ import {
 } from '../graphql/products';
 import { productDb } from './productDb';
 import { compareField, compareMetafields } from '../utils/compareUtils';
+import { useSettingsStore } from '../stores/useSettingsStore';
 
 interface ProductResponse {
   products: {
@@ -194,6 +195,7 @@ export async function syncProductToEnvironment(
       sourceEnvironment === 'production' ? 'staging_id' : 'production_id';
 
     const product = await productDb.getProductComparison(handle);
+    const settings = useSettingsStore.getState().settings;
 
     if (!product || !product[sourceId]) {
       throw new Error(`Product ${handle} not found in ${sourceEnvironment}`);
@@ -225,7 +227,14 @@ export async function syncProductToEnvironment(
       seo: sourceDetails.seo,
     };
 
-    const media = getMediaInputs(sourceDetails);
+    logger.info(
+      '🚀 - settings?.syncProductImages:',
+      settings?.syncProductImages
+    );
+
+    const media = settings?.syncProductImages
+      ? getMediaInputs(sourceDetails)
+      : [];
 
     if (product[targetId]) {
       const response = await shopifyApi.post<ProductUpdateResponse>(

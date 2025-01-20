@@ -64,3 +64,10 @@ export function compareMetafields(
     }
   }
 }
+
+export function isTrueOrDefault(
+  value: string | boolean | null,
+  defaultValue: boolean
+) {
+  return value === null ? defaultValue : String(value).toLowerCase() === 'true';
+}

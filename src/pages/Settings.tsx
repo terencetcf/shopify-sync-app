@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSettingsStore } from '../stores/useSettingsStore';
 import Notification from '../components/Notification';
+import { isTrueOrDefault } from '../utils/compareUtils';
+import { logger } from '../utils/logger';
 
 export default function Settings() {
   const { settings, updateSettings, isLoading, error } = useSettingsStore();
@@ -16,10 +18,15 @@ export default function Settings() {
       import.meta.env.VITE_SHOPIFY_STAGING_STORE_URL ?? '',
     shopifyStagingAccessToken:
       import.meta.env.VITE_SHOPIFY_STAGING_ACCESS_TOKEN ?? '',
+    syncProductImages: isTrueOrDefault(
+      import.meta.env.VITE_SHOPIFY_SYNC_PRODUCT_IMAGES,
+      true
+    ),
   });
 
   useEffect(() => {
     if (settings && Object.values(settings).every((s) => !!s)) {
+      logger.info('settings =>', settings);
       setFormData(settings);
     }
   }, [settings]);
@@ -42,6 +49,7 @@ export default function Settings() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      logger.info('🚀 - formData:', formData);
       await updateSettings(formData);
       setShowSaveNotification(true);
     } catch (err: any) {
@@ -138,6 +146,35 @@ export default function Settings() {
                   onChange={handleChange}
                   className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                 />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h2 className="text-xl font-semibold text-white mb-4">
+              Sync Settings
+            </h2>
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="syncProductImages"
+                  name="syncProductImages"
+                  checked={isTrueOrDefault(formData.syncProductImages, false)}
+                  onChange={(e) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      syncProductImages: e.target.checked,
+                    }));
+                  }}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
+                />
+                <label
+                  htmlFor="syncProductImages"
+                  className="ml-2 block text-sm font-medium text-gray-300"
+                >
+                  Sync product images when syncing products
+                </label>
               </div>
             </div>
           </div>
