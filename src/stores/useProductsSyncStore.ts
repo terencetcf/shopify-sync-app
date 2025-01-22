@@ -35,6 +35,11 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       logger.info('Starting product comparison...');
+      set({ compareProgress: { current: 0, total: 1 } });
+
+      // Clear existing products before starting new comparison
+      await productDb.clearAllProducts();
+
       const [productionProducts, stagingProducts] = await Promise.all([
         fetchAllProducts('production'),
         fetchAllProducts('staging'),

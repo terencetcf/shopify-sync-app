@@ -82,4 +82,12 @@ export const collectionDb = {
   getCollectionComparisons,
   getCollectionComparison,
   setCollectionComparison,
+  clearAllCollections: async () => {
+    if (deviceIdentifier.isWeb) {
+      window.localStorage.removeItem('collectionComparison');
+      return;
+    }
+
+    await AppDb.execute('DELETE FROM collections');
+  },
 };

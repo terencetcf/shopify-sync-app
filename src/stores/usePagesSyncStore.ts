@@ -35,6 +35,11 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       logger.info('Starting page comparison...');
+      set({ compareProgress: { current: 0, total: 1 } });
+
+      // Clear existing pages before starting new comparison
+      await pageDb.clearAllPages();
+
       const [productionPages, stagingPages] = await Promise.all([
         fetchAllPages('production'),
         fetchAllPages('staging'),
@@ -51,7 +56,6 @@ export const usePagesSyncStore = create<PagesSyncStore>((set, get) => ({
       logger.info(`Total unique handles found: ${allHandles.size}`);
 
       // Initialize progress
-      set({ compareProgress: { current: 0, total: allHandles.size } });
       let processed = 0;
 
       for (const handle of allHandles) {

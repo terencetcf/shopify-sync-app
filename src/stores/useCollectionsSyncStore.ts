@@ -36,6 +36,11 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
       set({ isLoading: true, error: null });
       try {
         logger.info('Starting collection comparison...');
+        set({ compareProgress: { current: 0, total: 1 } });
+
+        // Clear existing collections before starting new comparison
+        await collectionDb.clearAllCollections();
+
         const [productionCollections, stagingCollections] = await Promise.all([
           fetchAllCollections('production'),
           fetchAllCollections('staging'),
@@ -56,7 +61,6 @@ export const useCollectionsSyncStore = create<CollectionsSyncStore>(
         logger.info(`Total unique handles found: ${allHandles.size}`);
 
         // Initialize progress
-        set({ compareProgress: { current: 0, total: allHandles.size } });
         let processed = 0;
 
         for (const handle of allHandles) {

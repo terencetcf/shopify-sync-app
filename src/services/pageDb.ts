@@ -74,4 +74,13 @@ export const pageDb = {
       ]
     );
   },
+
+  clearAllPages: async () => {
+    if (deviceIdentifier.isWeb) {
+      window.localStorage.removeItem('pageComparison');
+      return;
+    }
+
+    await AppDb.execute('DELETE FROM pages');
+  },
 };

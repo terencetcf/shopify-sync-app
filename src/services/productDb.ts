@@ -79,4 +79,13 @@ export const productDb = {
       ]
     );
   },
+
+  clearAllProducts: async () => {
+    if (deviceIdentifier.isWeb) {
+      window.localStorage.removeItem('productComparison');
+      return;
+    }
+
+    await AppDb.execute('DELETE FROM products');
+  },
 };
