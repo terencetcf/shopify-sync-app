@@ -1,67 +1,53 @@
-import { Link, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 import { deviceIdentifier } from '../utils/deviceIdentifier';
 
+const navigation = [
+  { name: 'Collections', href: '/collections-sync' },
+  { name: 'Products', href: '/products-sync' },
+  { name: 'Pages', href: '/pages-sync' },
+  { name: 'Files', href: '/files-sync' },
+];
+
 export default function Navbar() {
-  const location = useLocation();
-  const currentPath = location.pathname;
-
-  const navigation = [
-    {
-      name: 'Collections',
-      href: '/collections-sync',
-      key: 'collections-sync',
-    },
-    { name: 'Products', href: '/products-sync', key: 'products-sync' },
-    { name: 'Pages', href: '/pages-sync', key: 'pages-sync' },
-  ];
-
   return (
-    <nav className="bg-gray-800 shadow">
-      <div className="mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 justify-between items-center">
+    <nav className="bg-gray-800 border-b border-gray-700">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 justify-between">
           <div className="flex">
-            <div className="flex flex-shrink-0 items-center font-semibold">
-              <img
-                src="/logo.svg"
-                alt="Foxstow Shaker Doors"
-                className="h-10 ml-1 mr-4"
-              />
-              Shopify Sync App
+            <div className="flex flex-shrink-0 items-center">
+              <img className="h-8 w-auto" src="/logo.svg" alt="Shopify Sync" />
             </div>
-            <div className="hidden sm:ml-16 sm:flex sm:space-x-8">
+            <div className="ml-6 flex space-x-8">
               {navigation.map((item) => (
-                <Link
-                  key={item.key}
+                <NavLink
+                  key={item.href}
                   to={item.href}
-                  className={`inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium ${
-                    currentPath === item.href
-                      ? 'border-blue-500 text-white'
-                      : 'border-transparent text-gray-300 hover:border-gray-300 hover:text-gray-100'
-                  }`}
+                  className={({ isActive }) =>
+                    `inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium ${
+                      isActive
+                        ? 'border-blue-500 text-white'
+                        : 'border-transparent text-gray-300 hover:border-gray-300 hover:text-white'
+                    }`
+                  }
                 >
                   {item.name}
-                </Link>
+                </NavLink>
               ))}
             </div>
           </div>
           {!deviceIdentifier.isWeb && (
             <div className="flex items-center">
-              <Link
+              <NavLink
                 to="/settings"
-                className={`p-2 rounded-full hover:bg-gray-700 transition-colors ${
-                  currentPath === '/settings' ? 'bg-gray-700' : ''
-                }`}
-                title="Settings"
+                className={({ isActive }) =>
+                  `rounded-lg p-2 text-gray-400 hover:text-white ${
+                    isActive ? 'bg-gray-700' : ''
+                  }`
+                }
               >
-                <Cog6ToothIcon
-                  className={`h-6 w-6 ${
-                    currentPath === '/settings'
-                      ? 'text-blue-500'
-                      : 'text-gray-300 hover:text-white'
-                  }`}
-                />
-              </Link>
+                <Cog6ToothIcon className="h-6 w-6" aria-hidden="true" />
+              </NavLink>
             </div>
           )}
         </div>

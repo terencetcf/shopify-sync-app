@@ -1,7 +1,7 @@
 interface SyncProgressProps {
   current: number;
   total: number;
-  type: 'collections' | 'pages' | 'products';
+  type: 'collections' | 'pages' | 'products' | 'files';
   message?: string;
 }
 

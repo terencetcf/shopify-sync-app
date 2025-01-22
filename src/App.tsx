@@ -11,6 +11,7 @@ import { useSettingsStore } from './stores/useSettingsStore';
 import SettingsAlert from './components/SettingsAlert';
 import Notification from './components/Notification';
 import { useNotificationStore } from './stores/useNotificationStore';
+import FilesSync from './pages/FilesSync';
 
 function App() {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -64,6 +65,7 @@ function App() {
             <Route path="/collections-sync" element={<Sync />} />
             <Route path="/products-sync" element={<ProductSync />} />
             <Route path="/pages-sync" element={<PagesSync />} />
+            <Route path="/files-sync" element={<FilesSync />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </main>

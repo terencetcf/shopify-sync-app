@@ -104,6 +104,21 @@ pub fn run() {
             sql: "ALTER TABLE products ADD COLUMN collections TEXT NOT NULL DEFAULT '';",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 11,
+            description: "create_files_table",
+            sql: "CREATE TABLE IF NOT EXISTS files (
+                id TEXT PRIMARY KEY,
+                production_id TEXT,
+                staging_id TEXT,
+                alt TEXT,
+                url TEXT,
+                differences TEXT,
+                updated_at TIMESTAMP NOT NULL,
+                compared_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
