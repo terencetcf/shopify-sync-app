@@ -84,20 +84,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_ACTION_TOKEN }}
         with:
-          releaseId: ${{ needs.release.outputs.new_release_version }}
+          tagName: v${{ needs.release.outputs.new_release_version }}
           args: ${{ matrix.args }}
 
-      - name: Zip Build Artifacts (Windows)
-        if: matrix.platform == 'windows-latest'
-        run: |
-          cd src-tauri/target/release/bundle/msi
-          Compress-Archive -Path *.msi -DestinationPath ${{ matrix.output_name }}.zip
+      # - name: Zip Build Artifacts (Windows)
+      #   if: matrix.platform == 'windows-latest'
+      #   run: |
+      #     cd src-tauri/target/release/bundle/msi
+      #     Compress-Archive -Path *.msi -DestinationPath ${{ matrix.output_name }}.zip
 
-      - name: Zip Build Artifacts (macOS)
-        if: matrix.platform == 'macos-latest'
-        run: |
-          cd src-tauri/target/release/bundle/dmg
-          zip -r ${{ matrix.output_name }}.zip *.dmg
+      # - name: Zip Build Artifacts (macOS)
+      #   if: matrix.platform == 'macos-latest'
+      #   run: |
+      #     cd src-tauri/target/release/bundle/dmg
+      #     zip -r ${{ matrix.output_name }}.zip *.dmg
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
