@@ -172,7 +172,7 @@ export const useFilesSyncStore = create<FilesSyncStore>((set, get) => ({
           })
         );
 
-        set((state) => ({
+        set(() => ({
           syncProgress: {
             current: Math.min(i + chunkSize, ids.length),
             total: ids.length,
