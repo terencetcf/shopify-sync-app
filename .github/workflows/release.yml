@@ -50,9 +50,11 @@ jobs:
         platform: [windows-latest, macos-latest]
         include:
           - platform: windows-latest
+            args: '--target aarch64-apple-darwin'
             output_name: shopify-sync_${{ needs.release.outputs.new_release_version }}_x64_windows
           - platform: macos-latest
             output_name: shopify-sync_${{ needs.release.outputs.new_release_version }}_x64_macos
+            args: ''
 
     runs-on: ${{ matrix.platform }}
 
@@ -81,6 +83,13 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GH_ACTION_TOKEN }}
+        with:
+          tagName: app-v__VERSION__
+          releaseName: 'App v__VERSION__'
+          releaseBody: 'See the assets to download this version and install.'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
 
       - name: Zip Build Artifacts (Windows)
         if: matrix.platform == 'windows-latest'
