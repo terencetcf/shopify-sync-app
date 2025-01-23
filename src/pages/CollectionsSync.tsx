@@ -17,43 +17,8 @@ import {
   Transition,
 } from '@headlessui/react';
 import { ChevronDownIcon } from '@heroicons/react/20/solid';
-
-function DifferenceBadge({ text }: { text: string }) {
-  const getBadgeColor = (text: string) => {
-    switch (text.toLowerCase()) {
-      case 'in sync':
-        return 'bg-green-400/10 text-green-400 ring-green-400/20';
-      case 'missing in production':
-        return 'bg-red-400/10 text-red-400 ring-red-400/20';
-      case 'missing in staging':
-        return 'bg-yellow-400/10 text-yellow-400 ring-yellow-400/20';
-      default:
-        return 'bg-blue-400/10 text-blue-400 ring-blue-400/20';
-    }
-  };
-
-  return (
-    <span
-      className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${getBadgeColor(
-        text
-      )} mr-1 mb-1`}
-    >
-      {text}
-    </span>
-  );
-}
-
-interface FilterOption {
-  id: string;
-  label: string;
-}
-
-const filterOptions: FilterOption[] = [
-  { id: 'missing_staging', label: 'Missing in Staging' },
-  { id: 'missing_production', label: 'Missing in Production' },
-  { id: 'has_differences', label: 'Has differences' },
-  { id: 'in_sync', label: 'In sync' },
-];
+import { DifferenceBadge } from '../components/DifferenceBadge';
+import { STATUS_FILTER_OPTIONS } from '../types/status';
 
 export default function CollectionsSync() {
   const {
@@ -78,11 +43,11 @@ export default function CollectionsSync() {
 
   const [columnWidths, setColumnWidths] = useState({
     checkbox: 30,
-    title: 200,
-    handle: 100,
+    title: 350,
+    handle: 200,
     differences: 120,
-    lastUpdated: 100,
-    lastCompared: 100,
+    lastUpdated: 150,
+    lastCompared: 150,
   });
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -354,7 +319,7 @@ export default function CollectionsSync() {
                 >
                   <PopoverPanel className="absolute z-10 mt-1 w-full overflow-auto rounded-md bg-gray-700 py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                     <div className="p-2 space-y-2">
-                      {filterOptions.map((option) => (
+                      {STATUS_FILTER_OPTIONS.map((option) => (
                         <div key={option.id} className="flex items-center">
                           <input
                             type="checkbox"
@@ -414,7 +379,7 @@ export default function CollectionsSync() {
               </div>
               <div className="ml-3 flex-1">
                 <h3 className="mt-3 text-xl font-semibold leading-6 text-red-400">
-                  Opps! Something isn’t working as expected
+                  Opps! Something isn't working as expected
                 </h3>
                 <div className="mt-2">
                   <p className="text-red-300">{error}</p>
