@@ -43,9 +43,6 @@ export const useFilesSyncStore = create<FilesSyncStore>((set, get) => ({
       logger.info('Starting file comparison...');
       set({ compareProgress: { current: 0, total: 1 } });
 
-      // Clear existing files before starting new comparison
-      await fileDb.clearAllFiles();
-
       const [productionFiles, stagingFiles] = await Promise.all([
         fetchAllFiles('production'),
         fetchAllFiles('staging'),
@@ -69,6 +66,7 @@ export const useFilesSyncStore = create<FilesSyncStore>((set, get) => ({
 
       // Initialize progress
       set({ compareProgress: { current: 0, total: allFileNames.size } });
+      await fileDb.clearAllFiles();
       let processed = 0;
 
       for (const fileName of allFileNames) {

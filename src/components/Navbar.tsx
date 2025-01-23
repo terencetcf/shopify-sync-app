@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 import { deviceIdentifier } from '../utils/deviceIdentifier';
+import { version } from '../../package.json';
 
 const navigation = [
   { name: 'Collections', href: '/collections-sync' },
@@ -11,8 +12,8 @@ const navigation = [
 
 export default function Navbar() {
   return (
-    <nav className="bg-gray-800 border-b border-gray-700">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <nav className="bg-gray-800 border-b border-gray-700 px-6">
+      <div className="mx-auto px-8">
         <div className="flex h-16 justify-between">
           <div className="flex">
             <div className="flex flex-shrink-0 items-center">
@@ -36,8 +37,10 @@ export default function Navbar() {
               ))}
             </div>
           </div>
-          {!deviceIdentifier.isWeb && (
-            <div className="flex items-center">
+          <div className="flex justify-between items-center gap-4">
+            <span className="text-[10px] text-gray-500">v{version}</span>
+
+            {!deviceIdentifier.isWeb && (
               <NavLink
                 to="/settings"
                 className={({ isActive }) =>
@@ -48,8 +51,8 @@ export default function Navbar() {
               >
                 <Cog6ToothIcon className="h-6 w-6" aria-hidden="true" />
               </NavLink>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </nav>

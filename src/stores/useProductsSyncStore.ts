@@ -37,9 +37,6 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
       logger.info('Starting product comparison...');
       set({ compareProgress: { current: 0, total: 1 } });
 
-      // Clear existing products before starting new comparison
-      await productDb.clearAllProducts();
-
       const [productionProducts, stagingProducts] = await Promise.all([
         fetchAllProducts('production'),
         fetchAllProducts('staging'),
@@ -59,6 +56,7 @@ export const useProductsSyncStore = create<ProductsSyncStore>((set, get) => ({
 
       // Initialize progress
       set({ compareProgress: { current: 0, total: allHandles.size } });
+      await productDb.clearAllProducts();
       let processed = 0;
 
       for (const handle of allHandles) {
