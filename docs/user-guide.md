@@ -68,6 +68,9 @@ The Collections tab allows you to view and manage different product collections.
 - **Last Updated**: Displays the last update timestamp.
 - **Last Compared**: Shows when the collection was last compared.
 
+> [!IMPORTANT]  
+> It is very important to make sure all the products are synced to the target environment before sync any collection. If a particular product does not exists in the target environment, it will cause the collection sync fail as the app will fail to locate the product.
+
 ## Managing Products
 
 ### Overview

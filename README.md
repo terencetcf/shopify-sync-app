@@ -63,10 +63,19 @@ The app requires Shopify Admin API access tokens for both staging and production
 
 Required permissions for the Admin API:
 
-- Read/Write collections
-- Read/Write products
-- Read/Write pages
-- Read/Write files
+- write_products
+- read_products
+- read_product_listings
+- write_product_listings
+- write_online_store_pages
+- read_online_store_pages
+- write_content
+- read_content
+- read_files
+- write_files
+- read_themes
+- read_publications
+- write_publications
 
 ## Contributing
 
