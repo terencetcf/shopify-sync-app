@@ -139,3 +139,31 @@ export const UPDATE_PRODUCT_MUTATION = gql`
     }
   }
 `;
+
+export const CREATE_PRODUCT_OPTIONS_MUTATION = gql`
+  mutation createOptions(
+    $productId: ID!
+    $productOptions: [OptionCreateInput!]!
+  ) {
+    productOptionsCreate(productId: $productId, options: $productOptions) {
+      userErrors {
+        field
+        message
+        code
+      }
+      product {
+        options {
+          name
+          linkedMetafield {
+            namespace
+            key
+          }
+          optionValues {
+            name
+            linkedMetafieldValue
+          }
+        }
+      }
+    }
+  }
+`;

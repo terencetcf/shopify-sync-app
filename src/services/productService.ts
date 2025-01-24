@@ -8,6 +8,7 @@ import {
   PRODUCT_DETAILS_QUERY,
   CREATE_PRODUCT_MUTATION,
   UPDATE_PRODUCT_MUTATION,
+  CREATE_PRODUCT_OPTIONS_MUTATION,
 } from '../graphql/products';
 import { productDb } from './productDb';
 import { compareField, compareMetafields } from '../utils/compareUtils';
@@ -41,6 +42,28 @@ interface ProductCreateResponse {
   productCreate: {
     product: {
       id: string;
+    } | null;
+    userErrors: Array<{
+      field: string[];
+      message: string;
+    }>;
+  };
+}
+
+interface ProductCreateOptionsResponse {
+  productOptionsCreate: {
+    product: {
+      options: Array<{
+        name: string;
+        linkedMetafield: {
+          key: string;
+          namespace: string;
+        };
+        optionsValues: Array<{
+          name: string;
+          linkedMetafieldValue: string;
+        }>;
+      }>;
     } | null;
     userErrors: Array<{
       field: string[];
@@ -227,14 +250,18 @@ export async function syncProductToEnvironment(
       seo: sourceDetails.seo,
     };
 
-    logger.info(
-      '🚀 - settings?.syncProductImages:',
-      settings?.syncProductImages
-    );
-
     const media = settings?.syncProductImages
       ? getMediaInputs(sourceDetails)
       : [];
+
+    const productOptions = sourceDetails.options?.map((option) => ({
+      name: option.name,
+      position: option.position,
+      values: option.values.map((value) => ({
+        name: value,
+      })),
+      linkedMetafield: option.linkedMetafield,
+    }));
 
     if (product[targetId]) {
       const response = await shopifyApi.post<ProductUpdateResponse>(
@@ -254,13 +281,34 @@ export async function syncProductToEnvironment(
       if (response.productUpdate.userErrors?.length > 0) {
         throw new Error(response.productUpdate.userErrors[0].message);
       }
+
+      const productCreateOptionsResponse =
+        await shopifyApi.post<ProductCreateOptionsResponse>(targetEnvironment, {
+          query: print(CREATE_PRODUCT_OPTIONS_MUTATION),
+          variables: {
+            productId: product[targetId],
+            productOptions,
+          },
+        });
+
+      if (
+        productCreateOptionsResponse.productOptionsCreate.userErrors?.length > 0
+      ) {
+        logger.error(
+          'Received errors from API while attempting to create product options',
+          productCreateOptionsResponse.productOptionsCreate.userErrors
+        );
+      }
     } else {
       const response = await shopifyApi.post<ProductCreateResponse>(
         targetEnvironment,
         {
           query: print(CREATE_PRODUCT_MUTATION),
           variables: {
-            input,
+            input: {
+              ...input,
+              productOptions,
+            },
             media,
           },
         }
