@@ -1,10 +1,10 @@
 [
   {
-    "target": "https://stamm-inc8671.myshopify.com",
+    "target": "https://shoptest-shakerdoors-co-uk.myshopify.com",
     "path": "/production"
   },
   {
-    "target": "https://shoptest-shakerdoors-co-uk.myshopify.com",
+    "target": "https://h1qsjr-am.myshopify.com",
     "path": "/staging"
   }
 ]
