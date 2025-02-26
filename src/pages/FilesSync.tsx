@@ -231,7 +231,7 @@ export default function FilesSync() {
               </button>
               <button
                 onClick={() => handleSync('production')}
-                disabled={true || isLoading || selectedIds.size === 0}
+                disabled={isLoading || selectedIds.size === 0}
                 className="inline-flex items-center rounded-md bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {selectedIds.size > 0 && isLoading
