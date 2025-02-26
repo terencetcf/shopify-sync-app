@@ -115,6 +115,20 @@ export default function FilesSync() {
     fetchStoredFiles();
   }, []);
 
+  // Compute validation states for sync buttons
+  const { canSyncToProduction, canSyncToStaging } = useMemo(() => {
+    const selectedFiles = files.filter((c) => selectedIds.has(c.id));
+
+    const hasMissingInStaging = selectedFiles.some((c) => !c.staging_id);
+
+    const hasMissingInProduction = selectedFiles.some((c) => !c.production_id);
+
+    return {
+      canSyncToProduction: !hasMissingInStaging,
+      canSyncToStaging: !hasMissingInProduction,
+    };
+  }, [files, selectedIds]);
+
   const handleSelectAll = () => {
     if (selectedIds.size === filteredFiles.length) {
       setSelectedIds(new Set());
@@ -222,7 +236,14 @@ export default function FilesSync() {
             <div className="flex space-x-4">
               <button
                 onClick={() => handleSync('staging')}
-                disabled={isLoading || selectedIds.size === 0}
+                disabled={
+                  isLoading || selectedIds.size === 0 || !canSyncToStaging
+                }
+                title={
+                  !canSyncToStaging
+                    ? 'Cannot sync to staging: Some selected files are missing in production'
+                    : ''
+                }
                 className="inline-flex items-center rounded-md bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {selectedIds.size > 0 && isLoading
@@ -231,7 +252,14 @@ export default function FilesSync() {
               </button>
               <button
                 onClick={() => handleSync('production')}
-                disabled={isLoading || selectedIds.size === 0}
+                disabled={
+                  isLoading || selectedIds.size === 0 || !canSyncToProduction
+                }
+                title={
+                  !canSyncToProduction
+                    ? 'Cannot sync to production: Some selected files are missing in staging'
+                    : ''
+                }
                 className="inline-flex items-center rounded-md bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {selectedIds.size > 0 && isLoading
