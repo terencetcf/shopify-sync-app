@@ -133,17 +133,22 @@ export const useFilesSyncStore = create<FilesSyncStore>((set, get) => ({
         await Promise.all(
           chunk.map(async (id) => {
             try {
-              await syncFileToEnvironment(
+              const createdId = await syncFileToEnvironment(
                 id,
                 sourceEnvironment,
                 targetEnvironment
               );
+              const targetFieldToUpdate =
+                targetEnvironment === 'production'
+                  ? 'production_id'
+                  : 'staging_id';
 
               // Update the file in state and database
               const file = await fileDb.getFileComparison(id);
               if (file) {
                 await fileDb.setFileComparison({
                   ...file,
+                  [targetFieldToUpdate]: createdId,
                   differences: 'In sync',
                   compared_at: new Date().toISOString(),
                 });
@@ -153,6 +158,7 @@ export const useFilesSyncStore = create<FilesSyncStore>((set, get) => ({
                     f.id === id
                       ? {
                           ...f,
+                          [targetFieldToUpdate]: createdId,
                           differences: 'In sync',
                           compared_at: new Date().toISOString(),
                         }

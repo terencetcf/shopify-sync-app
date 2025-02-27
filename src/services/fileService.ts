@@ -90,7 +90,7 @@ export async function syncFileToEnvironment(
   id: string,
   sourceEnvironment: Environment,
   targetEnvironment: Environment
-): Promise<void> {
+): Promise<string> {
   try {
     const sourceId =
       sourceEnvironment === 'production' ? 'production_id' : 'staging_id';
@@ -122,6 +122,8 @@ export async function syncFileToEnvironment(
     if (response.fileCreate.userErrors?.length > 0) {
       throw new Error(response.fileCreate.userErrors[0].message);
     }
+
+    return response.fileCreate.files[0].id;
   } catch (err) {
     logger.error(`Failed to sync file ${id} to ${targetEnvironment}:`, err);
     throw err;
